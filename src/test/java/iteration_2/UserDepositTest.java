@@ -48,9 +48,9 @@ public class UserDepositTest {
 
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
-                // positive
+                // позитивный
                 Arguments.of(1, 1000),
-                //corner cases
+                // граничные значения
                 Arguments.of(1, 0.01),
                 Arguments.of(1, 4999.99),
                 Arguments.of(1, 5000));
@@ -114,10 +114,10 @@ public class UserDepositTest {
 
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
-                // negative
+                // негативные
                 Arguments.of(1, 6000, "Deposit amount cannot exceed 5000"),
                 Arguments.of(1, -100, "Deposit amount must be at least 0.01"),
-                // corner cases
+                // граничные значения
                 Arguments.of(1, 5000.01, "Deposit amount cannot exceed 5000"),
                 Arguments.of(1, 0, "Deposit amount must be at least 0.01"));
     }
