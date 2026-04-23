@@ -42,7 +42,7 @@ public class TransferTest {
                 .header("Authorization", "Basic YWRtaW46YWRtaW4=")
                 .body("""
                         {
-                           "username": "kate2005",
+                           "username": "kate2010",
                            "password": "Kate2000#!",
                            "role": "USER"
                         }
@@ -58,7 +58,7 @@ public class TransferTest {
                 .accept(ContentType.JSON)
                 .body("""
                         {
-                           "username": "kate2005",
+                           "username": "kate2010",
                            "password": "Kate2000#!"
                         }
                         """)
@@ -73,7 +73,7 @@ public class TransferTest {
         accountId1 = createAccount();
         accountId2 = createAccount();
 
-        // добавляем депозиты на оба аккаунта (account1 = 25000, account2 = 20000)
+        // добавляем депозиты на оба аккаунта (account1 = 5*5000 = 25000, account2 = 4*5000 = 20000)
         for (int i = 0; i < 5; i++) {
             addDeposit(accountId1, 5000.0);
         }
@@ -153,18 +153,23 @@ public class TransferTest {
         double balanceAfter1 = getBalance(senderAccountId);
         double balanceAfter2 = getBalance(receiverAccountId);
 
-        Assertions.assertEquals(balanceBefore1 - transferAmount, balanceAfter1, 0.01);
-        Assertions.assertEquals(balanceBefore2 + transferAmount, balanceAfter2, 0.01);
+        Assertions.assertEquals(balanceBefore1 - transferAmount, balanceAfter1, 0.01, "Баланс отправителя должен уменьшиться на сумму перевода");
+        Assertions.assertEquals(balanceBefore2 + transferAmount, balanceAfter2, 0.01, "Баланс получателя должен увеличиться на сумму перевода");
     }
 
     private double getBalance(int accountId) {
-        return given()
+        Double balance = given()
                 .header("Authorization", userAuthHeader)
                 .get("http://localhost:4111/api/v1/customer/accounts")
                 .then()
                 .extract()
                 .jsonPath()
                 .getDouble(String.format("find { it.id == %d }.balance", accountId));
+
+        if (balance == null) {
+            throw new AssertionError("Аккаунт с ID " + accountId + " не найден");
+        }
+        return balance;
     }
 
     public static Stream<Arguments> transferInvalidData() {
@@ -173,8 +178,6 @@ public class TransferTest {
                 // неверная сумма
                 Arguments.of(accountId1, accountId2, 0, "Transfer amount must be at least 0.01"),
                 Arguments.of(accountId1, accountId2, -100, "Transfer amount must be at least 0.01"),
-                // несуществующий аккаунт
-                Arguments.of(accountId1, 0, 100, "Invalid transfer: insufficient funds or invalid accounts"),
                 // граничные значения
                 Arguments.of(accountId1, accountId2, 10000.01, "Transfer amount cannot exceed 10000"));
     }
@@ -182,6 +185,10 @@ public class TransferTest {
     @MethodSource("transferInvalidData")
     @ParameterizedTest
     public void userCannotAddTransferWithInvalidValue(int senderAccountId, int receiverAccountId, double transferAmount, String errorValue) {
+        //получаем балансы до трансфера
+        double balanceBefore1 = getBalance(senderAccountId);
+        double balanceBefore2 = getBalance(receiverAccountId);
+
         given()
                 .header("Authorization", userAuthHeader)
                 .contentType(ContentType.JSON)
@@ -198,7 +205,44 @@ public class TransferTest {
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST)
                 .body(Matchers.equalTo(errorValue));
+
+        //проверяем, что балансы не изменились
+        double balanceAfter1 = getBalance(senderAccountId);
+        double balanceAfter2 = getBalance(receiverAccountId);
+
+        Assertions.assertEquals(balanceBefore1, balanceAfter1, 0.01, "Баланс отправителя не должен измениться при ошибке");
+        Assertions.assertEquals(balanceBefore2, balanceAfter2, 0.01, "Баланс получателя не должен измениться при ошибке");
     }
+
+    @Test
+    public void userCannotTransferToNonExistentAccount() {
+        // получаем баланс отправителя ДО
+        double balanceBefore = getBalance(accountId1);
+
+        // пытаемся перевести на несуществующий аккаунт (ID = 0)
+        given()
+                .header("Authorization", userAuthHeader)
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .body(String.format("""
+                    {
+                      "senderAccountId": %d,
+                      "receiverAccountId": %d,
+                      "amount": %.2f
+                    }
+                    """, accountId1, 0, 100.0))
+                .post("http://localhost:4111/api/v1/accounts/transfer")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_BAD_REQUEST)
+                .body(Matchers.equalTo("Invalid transfer: insufficient funds or invalid accounts"));
+
+        // проверяем, что баланс отправителя не изменился
+        double balanceAfter = getBalance(accountId1);
+        Assertions.assertEquals(balanceBefore, balanceAfter, 0.01,
+                "Баланс отправителя не должен измениться при переводе на несуществующий аккаунт");
+    }
+
 
     @Test
     public void userCannotTransferWithSumMoreThanUserBalanceTest() {
@@ -207,6 +251,10 @@ public class TransferTest {
 
         // добавляем депозит на новый аккаунт
         addDeposit(accountId3, 1000.0);
+
+        // получаем балансы ДО перевода
+        double balanceBefore3 = getBalance(accountId3);
+        double balanceBefore2 = getBalance(accountId2);
 
         // делаем трансфер
         given()
@@ -225,5 +273,14 @@ public class TransferTest {
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST)
                 .body(Matchers.equalTo("Invalid transfer: insufficient funds or invalid accounts"));
+
+        // проверяем, что балансы НЕ ИЗМЕНИЛИСЬ
+        double balanceAfter3 = getBalance(accountId3);
+        double balanceAfter2 = getBalance(accountId2);
+
+        Assertions.assertEquals(balanceBefore3, balanceAfter3, 0.01,
+                "Баланс отправителя не должен измениться при недостатке средств");
+        Assertions.assertEquals(balanceBefore2, balanceAfter2, 0.01,
+                "Баланс получателя не должен измениться при ошибке перевода");
     }
 }
