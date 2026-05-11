@@ -74,16 +74,6 @@ Content-Type: application/json
 Authorization: Basic a2F0ZTE5OTg6S2F0ZTE5OThA
 
 {
-  "id": 23,
-  "balance": 1000
-}
-
-### Negative test: User cannot add a deposit to different account
-POST http://localhost:4111/api/v1/accounts/deposit
-Content-Type: application/json
-Authorization: Basic a2F0ZTE5OTg6S2F0ZTE5OThA
-
-{
   "id": 0,
   "balance": 1000
 }
