@@ -1,10 +1,10 @@
 package iteration_2;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
+import Base.BaseTest;
+import generators.RandomData;
+import models.CreateUserRequest;
+import models.UserDepositRequest;
+import models.UserRole;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -13,91 +13,53 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.AccountRequester;
+import requests.AdminCreateUserRequester;
+import requests.CreateAccountRequester;
+import requests.UserDepositRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
-import java.util.List;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-
-public class UserDepositTest {
-    private static String userAuthHeader;
+public class UserDepositTest extends BaseTest {
     private static int testAccountId;
+    private static CreateUserRequest userRequest;
     private static boolean isSetupDone = false;
-
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()));
-    }
 
     @BeforeAll
     public static void testSetup() {
         if (isSetupDone) return;
 
-        //создаем юзера
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                           "username": "kate20656",
-                           "password": "Kate2000#!",
-                           "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
+        //создаем данные для регистрации нового юзера
+        userRequest = CreateUserRequest.builder()
+                .username(RandomData.getUsername())
+                .password(RandomData.getPassword())
+                .role(UserRole.USER.toString())
+                .build();
 
-        // Логинимся и получаем токен
-        userAuthHeader = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                           "username": "kate20656",
-                           "password": "Kate2000#!"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/auth/login")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .header("Authorization");
+        //админом создаем юзера
+        new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
 
         isSetupDone = true;
     }
 
     @BeforeEach
     public void createNewAccount() {
-        testAccountId = createAccount();
-    }
-
-    private static int createAccount() {
-        return given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .statusCode(HttpStatus.SC_CREATED)
-                .extract()
-                .jsonPath()
-                .getInt("id");
+        testAccountId = new CreateAccountRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.entityWasCreated()
+        ).createAndGetId();
     }
 
     private static double getBalance(int accountId) {
-        Double balance = given()
-                .header("Authorization", userAuthHeader)
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then()
-                .extract()
-                .jsonPath()
-                .getDouble(String.format("find { it.id == %d }.balance", accountId));
+        Double balance =  new AccountRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsOK()
+        ).getBalance(accountId);
 
         if (balance == null) {
             throw new AssertionError("Аккаунт с ID " + accountId + " не найден");
@@ -121,32 +83,33 @@ public class UserDepositTest {
         // получаем баланс ДО депозита
         double balanceBefore = getBalance(testAccountId);
 
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(String.format("""
-                        {
-                          "id": %d,
-                          "balance": %f
-                        }
-                        """, testAccountId, depositAmount))
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
+        //ожидаемый баланс
+        double expectedBalance = balanceBefore + depositAmount;
+
+        // создаем запрос на депозит
+        UserDepositRequest depositRequest = UserDepositRequest.builder()
+                .id(testAccountId)
+                .balance(depositAmount)
+                .build();
+
+        new UserDepositRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsOK()
+        ).post(depositRequest)
                 .body("id", Matchers.equalTo(testAccountId))
-                .body("balance", Matchers.equalTo((float)(balanceBefore + depositAmount)))
-                .body("transactions.amount", Matchers.hasItem((float)depositAmount))
-                //проверяем ID последней транзакции
+                .body("balance", Matchers.equalTo((float) expectedBalance))
+                .body("transactions.amount", Matchers.hasItem((float) depositAmount))
                 .body("transactions[-1].id", Matchers.notNullValue())
-                //проверяем тип последней транзакции
                 .body("transactions[-1].type", Matchers.equalTo("DEPOSIT"));
 
-        // проверяем, что баланс увеличился
+        // проверяем, что баланс увеличился через отдельный запрос
         double balanceAfter = getBalance(testAccountId);
-        Assertions.assertEquals(balanceBefore + depositAmount, balanceAfter, 0.01,
-                "Баланс должен увеличиться на " + depositAmount);
+        Assertions.assertEquals(
+                expectedBalance,
+                balanceAfter,
+                0.01,
+                "Баланс должен увеличиться на " + depositAmount
+        );
     }
 
     public static Stream<Arguments> depositInvalidData() {
@@ -165,52 +128,63 @@ public class UserDepositTest {
         // получаем баланс ДО попытки депозита
         double balanceBefore = getBalance(testAccountId);
 
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(String.format("""
-                        {
-                          "id": %d,
-                          "balance": %f
-                        }
-                        """, testAccountId, depositAmount))
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(Matchers.equalTo(errorValue));
+        // создаем запрос на депозит
+        UserDepositRequest depositRequest = UserDepositRequest.builder()
+                .id(testAccountId)
+                .balance(depositAmount)
+                .build();
+
+        // отправляем запрос и получаем ответ
+        String actualErrorMessage = new UserDepositRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsBadRequest()
+        ).post(depositRequest)
+                .extract()
+                .body()
+                .asString();
+
+        // проверяем сообщение об ошибке
+        softly.assertThat(actualErrorMessage)
+                .as("Сообщение об ошибке для суммы %s", depositAmount)
+                .isEqualTo(errorValue);
 
         // проверяем, что баланс НЕ ИЗМЕНИЛСЯ
         double balanceAfter = getBalance(testAccountId);
-        Assertions.assertEquals(balanceBefore, balanceAfter, 0.01,
-                "Баланс не должен измениться при попытке депозита с невалидной суммой: " + depositAmount);
+        softly.assertThat(balanceAfter)
+                .as("Баланс после неудачного депозита (сумма: %s)", depositAmount)
+                .isEqualByComparingTo(balanceBefore);
     }
 
     @Test
     public void userCannotAddDepositToDifferentAccount() {
         // получаем баланс ДО попытки депозита
         double balanceBefore = getBalance(testAccountId);
+        int differentAccountId = 2; // чужой аккаунт
 
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                          "id": 2,
-                          "balance": 100
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_FORBIDDEN)
-                .body(Matchers.equalTo("Unauthorized access to account"));
+        // создаем запрос на депозит для чужого аккаунта
+        UserDepositRequest depositRequest = UserDepositRequest.builder()
+                .id(differentAccountId)
+                .balance(100.0)
+                .build();
+
+        // отправляем запрос и получаем ответ
+        String actualErrorMessage = new UserDepositRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                ResponseSpecs.requestReturnsForbidden()
+        ).post(depositRequest)
+                .extract()
+                .body()
+                .asString();
+
+        // проверяем сообщение об ошибке
+        softly.assertThat(actualErrorMessage)
+                .as("Сообщение об ошибке при попытке депозита на чужой аккаунт")
+                .isEqualTo("Unauthorized access to account");
 
         // проверяем, что баланс НЕ ИЗМЕНИЛСЯ
         double balanceAfter = getBalance(testAccountId);
-        Assertions.assertEquals(balanceBefore, balanceAfter, 0.01,
-                "Баланс не должен измениться при попытке депозита на чужой аккаунт");
+        softly.assertThat(balanceAfter)
+                .as("Баланс после попытки депозита на чужой аккаунт")
+                .isEqualTo(balanceBefore);
     }
 }
