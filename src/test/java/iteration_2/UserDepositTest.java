@@ -22,6 +22,8 @@ import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
+import static specs.ResponseSpecs.*;
+
 public class UserDepositTest extends BaseTest {
     private static int testAccountId;
     private static CreateUserRequest userRequest;
@@ -115,11 +117,11 @@ public class UserDepositTest extends BaseTest {
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
                 // негативные
-                Arguments.of(6000.0, "Deposit amount cannot exceed 5000"),
-                Arguments.of(-100.0, "Deposit amount must be at least 0.01"),
+                Arguments.of(6000.0, DEPOSIT_AMOUNT_MAX_ERROR),
+                Arguments.of(-100.0, DEPOSIT_AMOUNT_MIN_ERROR),
                 // граничные значения
-                Arguments.of(5000.01, "Deposit amount cannot exceed 5000"),
-                Arguments.of(0.0, "Deposit amount must be at least 0.01"));
+                Arguments.of(5000.01, DEPOSIT_AMOUNT_MAX_ERROR),
+                Arguments.of(0.0, DEPOSIT_AMOUNT_MIN_ERROR));
     }
 
     @MethodSource("depositInvalidData")
@@ -161,10 +163,12 @@ public class UserDepositTest extends BaseTest {
         double balanceBefore = getBalance(testAccountId);
         int differentAccountId = 2; // чужой аккаунт
 
+        double depositAmount = RandomData.getBalance();
+
         // создаем запрос на депозит для чужого аккаунта
         UserDepositRequest depositRequest = UserDepositRequest.builder()
                 .id(differentAccountId)
-                .balance(100.0)
+                .balance(depositAmount)
                 .build();
 
         // отправляем запрос и получаем ответ
@@ -179,7 +183,7 @@ public class UserDepositTest extends BaseTest {
         // проверяем сообщение об ошибке
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке при попытке депозита на чужой аккаунт")
-                .isEqualTo("Unauthorized access to account");
+                .isEqualTo(UNAUTHORIZED_ACCESS_TO_ACCOUNT);
 
         // проверяем, что баланс НЕ ИЗМЕНИЛСЯ
         double balanceAfter = getBalance(testAccountId);

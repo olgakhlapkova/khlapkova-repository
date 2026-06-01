@@ -10,5 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class UpdateProfileRequest extends BaseModel {
+    public static final String DEFAULT_NAME = "Default User";
     private String name;
 }

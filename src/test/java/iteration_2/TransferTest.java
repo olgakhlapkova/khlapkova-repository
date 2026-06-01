@@ -18,6 +18,7 @@ import specs.ResponseSpecs;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.within;
+import static specs.ResponseSpecs.*;
 
 public class TransferTest extends BaseTest {
     private static CreateUserRequest userRequest;
@@ -136,10 +137,10 @@ public class TransferTest extends BaseTest {
         return Stream.of(
                 // негативные
                 // неверная сумма
-                Arguments.of(accountId1, accountId2, 0, "Transfer amount must be at least 0.01"),
-                Arguments.of(accountId1, accountId2, -100, "Transfer amount must be at least 0.01"),
+                Arguments.of(accountId1, accountId2, 0, TRANSFER_AMOUNT_MIN_ERROR),
+                Arguments.of(accountId1, accountId2, -100, TRANSFER_AMOUNT_MIN_ERROR),
                 // граничные значения
-                Arguments.of(accountId1, accountId2, 10000.01, "Transfer amount cannot exceed 10000"));
+                Arguments.of(accountId1, accountId2, 10000.01, TRANSFER_AMOUNT_MAX_ERROR));
     }
 
     @MethodSource("transferInvalidData")
@@ -188,11 +189,13 @@ public class TransferTest extends BaseTest {
         // получаем баланс отправителя ДО
         double balanceBefore = getBalance(accountId1);
 
+        double transferAmount = RandomData.getAmount();
+
         // создаем запрос на перевод на несуществующий аккаунт (ID = 999)
         TransferRequest transferRequest = TransferRequest.builder()
                 .senderAccountId(accountId1)
                 .receiverAccountId(999)
-                .amount(100.0)
+                .amount(transferAmount)
                 .build();
 
         // отправляем запрос и получаем сообщение об ошибке
@@ -207,7 +210,7 @@ public class TransferTest extends BaseTest {
         // проверяем сообщение об ошибке
         softly.assertThat(actualErrorValue)
                 .as("Сообщение об ошибке при переводе на несуществующий аккаунт")
-                .isEqualTo("Invalid transfer: insufficient funds or invalid accounts");
+                .isEqualTo(INVALID_TRANSFER);
 
         // проверяем, что баланс отправителя не изменился
         double balanceAfter = getBalance(accountId1);
@@ -222,18 +225,22 @@ public class TransferTest extends BaseTest {
         // создаем новый аккаунт у текущего пользователя
         int newAccountId = createNewAccount();
 
+        double startAmount = RandomData.getAmount();
+
         // добавляем депозит на новый аккаунт
-        addDeposit(newAccountId, 1000.0);
+        addDeposit(newAccountId, startAmount);
 
         // получаем балансы ДО перевода
         double balanceBeforeSender = getBalance(newAccountId);
         double balanceBeforeReceiver = getBalance(accountId2);
 
-        // создаем запрос на трансфер на сумму больше баланса (5000 > 1000)
+        double additionalBiggerAmount = startAmount * 2;
+
+        // создаем запрос на трансфер на сумму x2 больше баланса
         TransferRequest transferRequest = TransferRequest.builder()
                 .senderAccountId(newAccountId)
                 .receiverAccountId(accountId2)
-                .amount(5000.0)
+                .amount(additionalBiggerAmount)
                 .build();
 
         // отправляем запрос и получаем сообщение об ошибке
@@ -248,7 +255,7 @@ public class TransferTest extends BaseTest {
         // проверяем сообщение об ошибке
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке при недостатке средств")
-                .isEqualTo("Invalid transfer: insufficient funds or invalid accounts");
+                .isEqualTo(INVALID_TRANSFER);
 
         // проверяем, что балансы НЕ ИЗМЕНИЛИСЬ
         double balanceAfterSender = getBalance(newAccountId);

@@ -18,6 +18,9 @@ import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
+import static specs.ResponseSpecs.NAME_INVALID_ERROR;
+import static specs.ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY;
+
 public class UpdateProfileTest extends BaseTest {
     private static CreateUserRequest userRequest;
     private static String defaultName;
@@ -40,7 +43,7 @@ public class UpdateProfileTest extends BaseTest {
                 .post(userRequest);
 
         // устанавливаем начальное имя "Default User"
-        defaultName = "Default User";
+        defaultName = UpdateProfileRequest.DEFAULT_NAME;
         UpdateProfileRequest initialProfileRequest = UpdateProfileRequest.builder()
                 .name(defaultName)
                 .build();
@@ -103,7 +106,7 @@ public class UpdateProfileTest extends BaseTest {
         // проверяем ответ через объект
         softly.assertThat(response.getMessage())
                 .as("Сообщение в ответе")
-                .isEqualTo("Profile updated successfully");
+                .isEqualTo(PROFILE_UPDATED_SUCCESSFULLY);
 
         softly.assertThat(response.getCustomer())
                 .as("Customer в ответе")
@@ -130,15 +133,15 @@ public class UpdateProfileTest extends BaseTest {
         return Stream.of(
                 // негативные
                 // пустое имя
-                Arguments.of("", "Name must contain two words with letters only"),
+                Arguments.of("", NAME_INVALID_ERROR),
                 // 1 слово
-                Arguments.of("John", "Name must contain two words with letters only"),
+                Arguments.of("John", NAME_INVALID_ERROR),
                 // 3 слова
-                Arguments.of("John Junior Smith", "Name must contain two words with letters only"),
+                Arguments.of("John Junior Smith", NAME_INVALID_ERROR),
                 // имя содержит спецсимволы $%^&*()@#
-                Arguments.of("John$%^&*()@# Smith$%^&*()@#", "Name must contain two words with letters only"),
+                Arguments.of("John$%^&*()@# Smith$%^&*()@#", NAME_INVALID_ERROR),
                 // имя содержит цифры 0123456789
-                Arguments.of("John0123456789 Smith0123456789", "Name must contain two words with letters only"));
+                Arguments.of("John0123456789 Smith0123456789", NAME_INVALID_ERROR));
     }
 
     @MethodSource("nameInvalidData")
