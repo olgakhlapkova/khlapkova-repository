@@ -6,6 +6,12 @@ import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 
 public class ResponseSpecs {
+    //Сообщения для CreateUser
+
+    public static final String BLANK_USERNAME = "Username cannot be blank";
+    public static final String USERNAME_ALLOWED_SYMBOLS = "Username must contain only letters, digits, dashes, underscores, and dots";
+    public static final String USERNAME_ALLOWED_SIZE = "Username must be between 3 and 15 characters";
+
     // Сообщения для UpdateProfile
     public static final String PROFILE_UPDATED_SUCCESSFULLY = "Profile updated successfully";
     public static final String NAME_INVALID_ERROR = "Name must contain two words with letters only";
@@ -48,6 +54,13 @@ public class ResponseSpecs {
     public static ResponseSpecification requestReturnsBadRequest() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .build();
+    }
+
+    public static ResponseSpecification requestReturnsBadRequestWithMessages(String errorKey, String... expectedMessages) {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .expectBody(errorKey, Matchers.hasItems(expectedMessages))
                 .build();
     }
 
