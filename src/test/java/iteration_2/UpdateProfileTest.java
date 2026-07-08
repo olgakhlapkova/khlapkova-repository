@@ -2,17 +2,15 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.UpdateProfileRequest;
-import models.UpdateProfileResponse;
-import models.UserRole;
+import models.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
-import requests.UpdateProfileRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.skelethon.requesters.ValidatedCrudRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -37,8 +35,9 @@ public class UpdateProfileTest extends BaseTest {
                 .build();
 
         //админом создаем юзера
-        new AdminCreateUserRequester(
+        new CrudRequester(
                 RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_USER,
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
@@ -48,10 +47,11 @@ public class UpdateProfileTest extends BaseTest {
                 .name(defaultName)
                 .build();
 
-        new UpdateProfileRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_UPDATE,
                 ResponseSpecs.requestReturnsOK()
-        ).post(initialProfileRequest);
+        ).update(0, initialProfileRequest);
 
         isSetupDone = true;
     }
@@ -63,18 +63,22 @@ public class UpdateProfileTest extends BaseTest {
                 .name(defaultName)
                 .build();
 
-        new UpdateProfileRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_UPDATE,
                 ResponseSpecs.requestReturnsOK()
-        ).post(restoreRequest);
+        ).update(0, restoreRequest);
     }
 
     // Метод для получения текущего имени через GET
     private static String getCurrentName() {
-        return new UpdateProfileRequester(
+        CustomerResponse response = new ValidatedCrudRequester<CustomerResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK()
-        ).getCurrentName();
+        ).get(0);
+
+        return response != null ? response.getName() : "";
     }
 
     public static Stream<Arguments> nameValidData() {
@@ -96,12 +100,11 @@ public class UpdateProfileTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем ответ
-        UpdateProfileResponse response = new UpdateProfileRequester(
+        UpdateProfileResponse response = new ValidatedCrudRequester<UpdateProfileResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_UPDATE,
                 ResponseSpecs.requestReturnsOK()
-        ).post(updateRequest)
-                .extract()
-                .as(UpdateProfileResponse.class);
+        ).update(0, updateRequest);
 
         // проверяем ответ через объект
         softly.assertThat(response.getMessage())
@@ -156,10 +159,11 @@ public class UpdateProfileTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorValue = new UpdateProfileRequester(
+        String actualErrorValue = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_UPDATE,
                 ResponseSpecs.requestReturnsBadRequest()
-        ).post(updateRequest)
+        ).update(0, updateRequest)
                 .extract()
                 .body()
                 .asString();

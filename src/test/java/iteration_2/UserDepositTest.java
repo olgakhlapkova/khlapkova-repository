@@ -2,9 +2,7 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.UserDepositRequest;
-import models.UserRole;
+import models.*;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -13,10 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AccountRequester;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
-import requests.UserDepositRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.skelethon.requesters.ValidatedCrudRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -41,32 +38,43 @@ public class UserDepositTest extends BaseTest {
                 .build();
 
         //админом создаем юзера
-        new AdminCreateUserRequester(
+        new CrudRequester(
                 RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_USER,
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
+        // создание аккаунта
+        new CrudRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.ACCOUNTS,
+                ResponseSpecs.entityWasCreated())
+                .post(null);
         isSetupDone = true;
     }
 
     @BeforeEach
     public void createNewAccount() {
-        testAccountId = new CreateAccountRequester(
+        CreateAccountResponse response = new ValidatedCrudRequester<CreateAccountResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated()
-        ).createAndGetId();
+        ).post(null);
+        testAccountId = response.getId();
     }
 
     private static double getBalance(int accountId) {
-        Double balance =  new AccountRequester(
+        AccountResponse[] accounts = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK()
-        ).getBalance(accountId);
+        ).getAndExtract(Endpoint.CUSTOMER_ACCOUNTS.getUrl(), AccountResponse[].class);
 
-        if (balance == null) {
-            throw new AssertionError("Аккаунт с ID " + accountId + " не найден");
-        }
-        return balance;
+        return java.util.Arrays.stream(accounts)
+                .filter(account -> account.getId() == accountId)
+                .findFirst()
+                .map(AccountResponse::getBalance)
+                .orElseThrow(() -> new AssertionError("Аккаунт с ID " + accountId + " не найден"));
     }
 
     public static Stream<Arguments> depositValidData() {
@@ -94,8 +102,9 @@ public class UserDepositTest extends BaseTest {
                 .balance(depositAmount)
                 .build();
 
-        new UserDepositRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
         ).post(depositRequest)
                 .body("id", Matchers.equalTo(testAccountId))
@@ -137,8 +146,9 @@ public class UserDepositTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем ответ
-        String actualErrorMessage = new UserDepositRequester(
+        String actualErrorMessage = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.DEPOSIT,
                 ResponseSpecs.requestReturnsBadRequest()
         ).post(depositRequest)
                 .extract()
@@ -172,8 +182,9 @@ public class UserDepositTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем ответ
-        String actualErrorMessage = new UserDepositRequester(
+        String actualErrorMessage = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.DEPOSIT,
                 ResponseSpecs.requestReturnsForbidden()
         ).post(depositRequest)
                 .extract()

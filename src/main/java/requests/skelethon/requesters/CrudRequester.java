@@ -28,17 +28,72 @@ public class CrudRequester extends HttpRequest implements CrudEndpointInterface 
     }
 
     @Override
-    public Object get(long id) {
-        return null;
+    public ValidatableResponse get(int id) {
+        String url = endpoint.getUrl().contains("{id}")
+                ? endpoint.getUrl().replace("{id}", String.valueOf(id))
+                : endpoint.getUrl() + (id > 0 ? "/" + id : "");
+        return given()
+                .spec(requestSpecification)
+                .get(url)
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
     }
 
     @Override
-    public Object update(long id, BaseModel model) {
-        return null;
+    public ValidatableResponse update(int id, BaseModel model) {
+        var body = model == null ? "" : model;
+        String url = endpoint.getUrl().contains("{id}")
+                ? endpoint.getUrl().replace("{id}", String.valueOf(id))
+                : endpoint.getUrl() + (id > 0 ? "/" + id : "");
+        return given()
+                .spec(requestSpecification)
+                .body(body)
+                .put(url)
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
     }
 
     @Override
-    public Object delete(long id) {
-        return null;
+    public ValidatableResponse delete(int id) {
+        String url = endpoint.getUrl().contains("{id}")
+                ? endpoint.getUrl().replace("{id}", String.valueOf(id))
+                : endpoint.getUrl() + (id > 0 ? "/" + id : "");
+        return given()
+                .spec(requestSpecification)
+                .delete(url)
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
+
+    public ValidatableResponse getAll() {
+        return given()
+                .spec(requestSpecification)
+                .get(endpoint.getUrl())
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
+
+    public <T> T getAndExtract(String path, Class<T> responseType) {
+        return given()
+                .spec(requestSpecification)
+                .get(path)
+                .then()
+                .assertThat()
+                .spec(responseSpecification)
+                .extract()
+                .as(responseType);
+    }
+
+    public ValidatableResponse getWithPath(String path) {
+        return given()
+                .spec(requestSpecification)
+                .get(path)
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
     }
 }

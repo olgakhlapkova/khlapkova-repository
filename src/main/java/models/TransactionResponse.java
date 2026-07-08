@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class TransactionResponse {
+public class TransactionResponse extends BaseModel {
     private int id;
     private double amount;
     private String type;

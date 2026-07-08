@@ -2,16 +2,15 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.TransferRequest;
-import models.UserDepositRequest;
-import models.UserRole;
+import models.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.*;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.skelethon.requesters.ValidatedCrudRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -37,8 +36,9 @@ public class TransferTest extends BaseTest {
                 .build();
 
         //админом создаем юзера
-        new AdminCreateUserRequester(
+        new CrudRequester(
                 RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_USER,
                 ResponseSpecs.entityWasCreated())
                 .post(userRequest);
 
@@ -58,10 +58,12 @@ public class TransferTest extends BaseTest {
     }
 
     public static int createNewAccount() {
-        return new CreateAccountRequester(
+        CreateAccountResponse response = new ValidatedCrudRequester<CreateAccountResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated()
-        ).createAndGetId();
+        ).post(null);
+        return response.getId();
     }
 
     private static void addDeposit(int accountId, double amount) {
@@ -70,22 +72,25 @@ public class TransferTest extends BaseTest {
                 .balance(amount)
                 .build();
 
-        new UserDepositRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
         ).post(depositRequest);
     }
 
     private static double getBalance(int accountId) {
-        Double balance = new AccountRequester(
+        AccountResponse[] accounts = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK()
-        ).getBalance(accountId);
+        ).getAndExtract(Endpoint.CUSTOMER_ACCOUNTS.getUrl(), AccountResponse[].class);
 
-        if (balance == null) {
-            throw new AssertionError("Аккаунт с ID " + accountId + " не найден");
-        }
-        return balance;
+        return java.util.Arrays.stream(accounts)
+                .filter(account -> account.getId() == accountId)
+                .findFirst()
+                .map(AccountResponse::getBalance)
+                .orElseThrow(() -> new AssertionError("Аккаунт с ID " + accountId + " не найден"));
     }
 
     public static Stream<Arguments> transferValidData() {
@@ -115,8 +120,9 @@ public class TransferTest extends BaseTest {
                 .build();
 
         // отправляем запрос - проверка статуса через ResponseSpecs
-        new TransferRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.TRANSFER,
                 ResponseSpecs.requestReturnsOK()
         ).post(transferRequest);
 
@@ -158,8 +164,9 @@ public class TransferTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorValue = new TransferRequester(
+        String actualErrorValue = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.TRANSFER,
                 ResponseSpecs.requestReturnsBadRequest()
         ).post(transferRequest)
                 .extract()
@@ -199,8 +206,9 @@ public class TransferTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorValue = new TransferRequester(
+        String actualErrorValue = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.TRANSFER,
                 ResponseSpecs.requestReturnsBadRequest()
         ).post(transferRequest)
                 .extract()
@@ -244,8 +252,9 @@ public class TransferTest extends BaseTest {
                 .build();
 
         // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorMessage = new TransferRequester(
+        String actualErrorMessage = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.TRANSFER,
                 ResponseSpecs.requestReturnsBadRequest()
         ).post(transferRequest)
                 .extract()
