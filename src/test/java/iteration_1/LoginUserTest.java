@@ -1,6 +1,7 @@
 package iteration_1;
 
 import Base.BaseTest;
+import configs.Config;
 import models.CreateUserRequest;
 import models.CreateUserResponse;
 import models.LoginUserRequest;
@@ -18,8 +19,8 @@ public class LoginUserTest extends BaseTest {
     @Test
     public void adminCanGenerateAuthTokenTest() {
         LoginUserRequest userRequest = LoginUserRequest.builder()
-                .username("admin")
-                .password("admin")
+                .username(Config.getProperty("adminUsername"))
+                .password(Config.getProperty("adminPassword"))
                 .build();
 
         new ValidatedCrudRequester<CreateUserResponse>(RequestSpecs.unauthSpec(),
@@ -38,6 +39,4 @@ public class LoginUserTest extends BaseTest {
                 .post(LoginUserRequest.builder().username(userRequest.getUsername()).password(userRequest.getPassword()).build())
                 .header("Authorization", Matchers.notNullValue());
     }
-
-
 }

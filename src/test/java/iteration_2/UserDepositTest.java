@@ -2,7 +2,10 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
-import models.*;
+import models.AccountResponse;
+import models.CreateAccountResponse;
+import models.CreateUserRequest;
+import models.UserDepositRequest;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,6 +17,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 import requests.skelethon.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -31,18 +35,7 @@ public class UserDepositTest extends BaseTest {
         if (isSetupDone) return;
 
         //создаем данные для регистрации нового юзера
-        userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        //админом создаем юзера
-        new CrudRequester(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_USER,
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        userRequest = AdminSteps.createUser();
 
         // создание аккаунта
         new CrudRequester(

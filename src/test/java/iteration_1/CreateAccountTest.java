@@ -1,11 +1,7 @@
 package iteration_1;
 
 import Base.BaseTest;
-import generators.RandomData;
-import generators.RandomModelGenerator;
 import models.CreateUserRequest;
-import models.CreateUserResponse;
-import models.UserRole;
 import org.junit.jupiter.api.Test;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;

@@ -1,8 +1,10 @@
 package iteration_2;
 
 import Base.BaseTest;
-import generators.RandomData;
-import models.*;
+import models.CreateUserRequest;
+import models.CustomerResponse;
+import models.UpdateProfileRequest;
+import models.UpdateProfileResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 import requests.skelethon.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -28,18 +31,7 @@ public class UpdateProfileTest extends BaseTest {
     public static void testSetup() {
         if (isSetupDone) return;
         //создаем данные для регистрации нового юзера
-        userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        //админом создаем юзера
-        new CrudRequester(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_USER,
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        userRequest = AdminSteps.createUser();
 
         // устанавливаем начальное имя "Default User"
         defaultName = UpdateProfileRequest.DEFAULT_NAME;
