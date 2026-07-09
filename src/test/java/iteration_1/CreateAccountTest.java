@@ -1,6 +1,7 @@
 package iteration_1;
 
 import Base.BaseTest;
+import io.qameta.allure.Step;
 import models.CreateUserRequest;
 import org.junit.jupiter.api.Test;
 import requests.skelethon.Endpoint;
@@ -12,15 +13,15 @@ import specs.ResponseSpecs;
 public class CreateAccountTest extends BaseTest {
 
     @Test
+    @Step("Создание аккаунта")
     public void userCanCreateAccountTest() {
         CreateUserRequest userRequest = AdminSteps.createUser();
 
-        // создание аккаунта
         new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated())
-                        .post(null);
+                        .post();
         //.createAndGetId();
 
         // получаем все аккаунты и проверяем, что созданный аккаунт есть в списке

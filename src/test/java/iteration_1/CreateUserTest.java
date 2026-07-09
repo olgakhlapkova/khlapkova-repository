@@ -36,7 +36,6 @@ public class CreateUserTest extends BaseTest {
 
     public static Stream<Arguments> userInvalidData() {
         return Stream.of(
-                // username field validation
                 Arguments.of("   ", "Password33$", "USER", "username", new String[] {BLANK_USERNAME, USERNAME_ALLOWED_SYMBOLS}),
                 Arguments.of("ab", "Password33$", "USER", "username", new String[]{USERNAME_ALLOWED_SIZE}),
                 Arguments.of("abc$", "Password33$", "USER", "username", new String[]{USERNAME_ALLOWED_SYMBOLS}),

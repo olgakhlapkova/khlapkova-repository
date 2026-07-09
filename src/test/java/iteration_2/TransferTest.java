@@ -2,6 +2,7 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
+import io.qameta.allure.Step;
 import models.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,22 +28,21 @@ public class TransferTest extends BaseTest {
     private static boolean isSetupDone = false;
 
     @BeforeAll
+    @Step("Создаем юзера с 2 аккаунтами, добавляем депозиты (account1 = 5*5000 = 25000, account2 = 4*5000 = 20000")
     public static void testSetup() {
         if (isSetupDone) return;
-        //создаем данные для регистрации нового юзера
         userRequest = AdminSteps.createUser();
 
-        //создаем 2 аккаунта
         accountId1 = createNewAccount();
         accountId2 = createNewAccount();
 
-        // добавляем депозиты на оба аккаунта (account1 = 5*5000 = 25000, account2 = 4*5000 = 20000)
         repeat(5, () -> addDeposit(accountId1, 5000.0));
         repeat(4, () -> addDeposit(accountId2, 5000.0));
 
         isSetupDone = true;
     }
 
+    @Step("Создание аккаунта")
     public static int createNewAccount() {
         CreateAccountResponse response = new ValidatedCrudRequester<CreateAccountResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
@@ -52,6 +52,7 @@ public class TransferTest extends BaseTest {
         return response.getId();
     }
 
+    @Step("Добавление депозита")
     private static void addDeposit(int accountId, double amount) {
         UserDepositRequest depositRequest = UserDepositRequest.builder()
                 .id(accountId)
@@ -65,6 +66,7 @@ public class TransferTest extends BaseTest {
         ).post(depositRequest);
     }
 
+    @Step("Получение баланса")
     private static double getBalance(int accountId) {
         AccountResponse[] accounts = new CrudRequester(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
@@ -93,6 +95,7 @@ public class TransferTest extends BaseTest {
 
     @MethodSource("transferValidData")
     @ParameterizedTest
+    @Step("Проверка позитивных сценариев и граничных значений")
     public void userCanAddTransferWithValidValue(int senderAccountId, int receiverAccountId, double transferAmount) {
         // получаем балансы до трансфера
         double balanceBefore1 = getBalance(senderAccountId);
@@ -137,6 +140,7 @@ public class TransferTest extends BaseTest {
 
     @MethodSource("transferInvalidData")
     @ParameterizedTest
+    @Step("Проверка негативных сценариев и граничных значений")
     public void userCannotAddTransferWithInvalidValue(int senderAccountId, int receiverAccountId, double transferAmount, String errorValue) {
         //получаем балансы до трансфера
         double balanceBefore1 = getBalance(senderAccountId);
@@ -178,6 +182,7 @@ public class TransferTest extends BaseTest {
     }
 
     @Test
+    @Step("Проверка, что невозможно осуществить трансфер на несуществующий аккаунт")
     public void userCannotTransferToNonExistentAccount() {
         // получаем баланс отправителя ДО
         double balanceBefore = getBalance(accountId1);
@@ -213,8 +218,8 @@ public class TransferTest extends BaseTest {
                 .isEqualTo(balanceBefore, within(0.01));
     }
 
-
     @Test
+    @Step("Проверка, что невозможно сделать трансфер на сумму больше, чем баланс")
     public void userCannotTransferWithSumMoreThanUserBalanceTest() {
         // создаем новый аккаунт у текущего пользователя
         int newAccountId = createNewAccount();
