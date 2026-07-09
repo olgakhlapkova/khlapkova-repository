@@ -42,7 +42,7 @@ public class UserDepositTest extends BaseTest {
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated())
-                .post(null);
+                .post();
         isSetupDone = true;
     }
 
@@ -52,7 +52,7 @@ public class UserDepositTest extends BaseTest {
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated()
-        ).post(null);
+        ).post();
         testAccountId = response.getId();
     }
 

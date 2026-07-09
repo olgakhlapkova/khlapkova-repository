@@ -37,12 +37,8 @@ public class TransferTest extends BaseTest {
         accountId2 = createNewAccount();
 
         // добавляем депозиты на оба аккаунта (account1 = 5*5000 = 25000, account2 = 4*5000 = 20000)
-        for (int i = 0; i < 5; i++) {
-            addDeposit(accountId1, 5000.0);
-        }
-        for (int i = 0; i < 4; i++) {
-            addDeposit(accountId2, 5000.0);
-        }
+        repeat(5, () -> addDeposit(accountId1, 5000.0));
+        repeat(4, () -> addDeposit(accountId2, 5000.0));
 
         isSetupDone = true;
     }
@@ -52,7 +48,7 @@ public class TransferTest extends BaseTest {
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 Endpoint.ACCOUNTS,
                 ResponseSpecs.entityWasCreated()
-        ).post(null);
+        ).post();
         return response.getId();
     }
 

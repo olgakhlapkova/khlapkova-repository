@@ -27,6 +27,15 @@ public class CrudRequester extends HttpRequest implements CrudEndpointInterface 
                 .spec(responseSpecification);
     }
 
+    public ValidatableResponse post() {
+        return given()
+                .spec(requestSpecification)
+                .post(endpoint.getUrl())
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
+
     @Override
     public ValidatableResponse get(int id) {
         String url = endpoint.getUrl().contains("{id}")
