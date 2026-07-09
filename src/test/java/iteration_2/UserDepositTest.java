@@ -3,12 +3,7 @@ package iteration_2;
 import Base.BaseTest;
 import generators.RandomData;
 import io.qameta.allure.Step;
-import models.AccountResponse;
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
-import models.UserDepositRequest;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Assertions;
+import models.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +19,7 @@ import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.within;
 import static specs.ResponseSpecs.*;
 
 public class UserDepositTest extends BaseTest {
@@ -91,24 +87,43 @@ public class UserDepositTest extends BaseTest {
                 .balance(depositAmount)
                 .build();
 
-        new CrudRequester(
+        UserDepositResponse response = new ValidatedCrudRequester<UserDepositResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 Endpoint.DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
-        ).post(depositRequest)
-                .body("id", Matchers.equalTo(testAccountId))
-                .body("balance", Matchers.equalTo((float) expectedBalance))
-                .body("transactions.amount", Matchers.hasItem((float) depositAmount))
-                .body("transactions[-1].id", Matchers.notNullValue())
-                .body("transactions[-1].type", Matchers.equalTo("DEPOSIT"));
+        ).post(depositRequest);
+
+        softly.assertThat(response.getId())
+                .as("ID аккаунта")
+                .isEqualTo(testAccountId);
+
+        softly.assertThat(response.getBalance())
+                .as("Баланс после депозита")
+                .isEqualTo(expectedBalance, within(0.01));
+
+        softly.assertThat(response.getTransactions())
+                .as("Список транзакций")
+                .isNotEmpty();
+
+        TransactionResponse lastTransaction = response.getTransactions()
+                .get(response.getTransactions().size() - 1);
+
+        softly.assertThat(lastTransaction.getAmount())
+                .as("Сумма последней транзакции")
+                .isEqualTo(depositAmount, within(0.01));
+
+        softly.assertThat(lastTransaction.getType())
+                .as("Тип последней транзакции")
+                .isEqualTo("DEPOSIT");
+
+        softly.assertThat(lastTransaction.getId())
+                .as("ID последней транзакции")
+                .isGreaterThan(0);
 
         double balanceAfter = getBalance(testAccountId);
-        Assertions.assertEquals(
-                expectedBalance,
-                balanceAfter,
-                0.01,
-                "Баланс должен увеличиться на " + depositAmount
-        );
+        softly.assertThat(balanceAfter)
+                .as("Баланс должен увеличиться на %.2f", depositAmount)
+                .isEqualTo(expectedBalance, within(0.01));
     }
 
     public static Stream<Arguments> depositInvalidData() {
