@@ -23,4 +23,47 @@ public class RandomData {
     public static double getAmount() {
         return RandomUtils.nextDouble(0.01, 1000.0);
     }
+
+    public static int getRandomAccountId() {
+        return RandomUtils.nextInt(1000, 3000);
+    }
+
+    public static String generateRandomValidName() {
+        return RandomStringUtils.randomAlphabetic(3, 7).toLowerCase() +
+                RandomStringUtils.randomAlphabetic(3, 7).toUpperCase() + " " +
+                RandomStringUtils.randomAlphabetic(3, 7).toLowerCase() +
+                RandomStringUtils.randomAlphabetic(3, 7).toUpperCase();
+    }
+
+    public static String generateRandomLongValidName() {
+        return RandomStringUtils.randomAlphabetic(8).toLowerCase() +
+                RandomStringUtils.randomAlphabetic(7).toUpperCase() + " " +
+                RandomStringUtils.randomAlphabetic(8).toLowerCase() +
+                RandomStringUtils.randomAlphabetic(7).toUpperCase();
+    }
+
+    public static String generateRandomShortValidName() {
+        return RandomStringUtils.randomAlphabetic(1).toLowerCase() + " " +
+                RandomStringUtils.randomAlphabetic(1).toUpperCase();
+    }
+
+    public static String generateEmptyName() {
+        return "";
+    }
+
+    public static String generateOneWordName() {
+        return RandomStringUtils.randomAlphabetic(1, 15);
+    }
+
+    public static String generateThreeWordsName() {
+        return RandomStringUtils.randomAlphabetic(1, 15) + " " + RandomStringUtils.randomAlphabetic(1, 15) + " " + RandomStringUtils.randomAlphabetic(1, 15);
+    }
+
+    public static String generateInvalidNameWithNumbers() {
+        return RandomStringUtils.randomAlphabetic(1, 8) + RandomStringUtils.randomNumeric(1, 7) + " " + RandomStringUtils.randomAlphabetic(1, 8) + RandomStringUtils.randomNumeric(1, 7);
+    }
+
+    public static String generateInvalidNameWithRandomAscii() {
+        return RandomStringUtils.randomAlphabetic(1, 8) + RandomStringUtils.randomAscii(7) + " " + RandomStringUtils.randomAlphabetic(1, 8) + RandomStringUtils.randomAscii(7);
+    }
 }

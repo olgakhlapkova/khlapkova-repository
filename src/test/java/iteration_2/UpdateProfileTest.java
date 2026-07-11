@@ -1,6 +1,7 @@
 package iteration_2;
 
 import Base.BaseTest;
+import generators.RandomData;
 import io.qameta.allure.Step;
 import models.CreateUserRequest;
 import models.UpdateProfileRequest;
@@ -43,9 +44,9 @@ public class UpdateProfileTest extends BaseTest {
 
     public static Stream<Arguments> nameValidData() {
         return Stream.of(
-                Arguments.of("Jane Air"),
-                Arguments.of("sdfdafdagdafgdfgadfgfdgfdagdbcbdafafdgd dgdgafgadfbabafadgadgafbadfgadfgadfgdfadfbadfg"),
-                Arguments.of("a a"));
+                Arguments.of(RandomData.generateRandomValidName()),
+                Arguments.of(RandomData.generateRandomLongValidName()),
+                Arguments.of(RandomData.generateRandomShortValidName()));
     }
 
     @MethodSource("nameValidData")
@@ -80,11 +81,11 @@ public class UpdateProfileTest extends BaseTest {
 
     public static Stream<Arguments> nameInvalidData() {
         return Stream.of(
-                Arguments.of("", NAME_INVALID_ERROR),
-                Arguments.of("John", NAME_INVALID_ERROR),
-                Arguments.of("John Junior Smith", NAME_INVALID_ERROR),
-                Arguments.of("John$%^&*()@# Smith$%^&*()@#", NAME_INVALID_ERROR),
-                Arguments.of("John0123456789 Smith0123456789", NAME_INVALID_ERROR));
+                Arguments.of(RandomData.generateEmptyName(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateOneWordName(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateThreeWordsName(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateInvalidNameWithRandomAscii(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateInvalidNameWithNumbers(), NAME_INVALID_ERROR));
     }
 
     @MethodSource("nameInvalidData")

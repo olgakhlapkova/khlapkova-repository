@@ -40,7 +40,7 @@ public class TransferTest extends BaseTest {
 
     public static Stream<Arguments> transferValidData() {
         return Stream.of(
-                Arguments.of(accountId1, accountId2, 1000),
+                Arguments.of(accountId1, accountId2, RandomData.getAmount()),
                 Arguments.of(accountId1, accountId2, 0.01),
                 Arguments.of(accountId1, accountId2, 9999.99),
                 Arguments.of(accountId1, accountId2, 10000),
@@ -106,7 +106,7 @@ public class TransferTest extends BaseTest {
         double balanceBefore = UserSteps.getBalance(userRequest, accountId1);
         double transferAmount = RandomData.getAmount();
 
-        String actualErrorValue = UserSteps.transferMoneyWithError(userRequest, accountId1, 999, transferAmount);
+        String actualErrorValue = UserSteps.transferMoneyWithError(userRequest, accountId1, RandomData.getRandomAccountId(), transferAmount);
 
         softly.assertThat(actualErrorValue)
                 .as("Сообщение об ошибке при переводе на несуществующий аккаунт")

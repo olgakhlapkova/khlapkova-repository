@@ -47,7 +47,7 @@ public class UserDepositTest extends BaseTest {
 
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
-                Arguments.of(1000.0),
+                Arguments.of(RandomData.getAmount()),
                 Arguments.of(0.01),
                 Arguments.of(4999.99),
                 Arguments.of(5000.0));
@@ -132,7 +132,7 @@ public class UserDepositTest extends BaseTest {
     @Step("Проверка, что невозможно добавить депозит на чужой аккаунт")
     public void userCannotAddDepositToDifferentAccount() {
         double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
-        int differentAccountId = 2;
+        int differentAccountId = RandomData.getRandomAccountId();
 
         double depositAmount = RandomData.getBalance();
 
