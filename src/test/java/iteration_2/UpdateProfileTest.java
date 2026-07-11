@@ -3,7 +3,6 @@ package iteration_2;
 import Base.BaseTest;
 import io.qameta.allure.Step;
 import models.CreateUserRequest;
-import models.CustomerResponse;
 import models.UpdateProfileRequest;
 import models.UpdateProfileResponse;
 import org.junit.jupiter.api.BeforeAll;
@@ -11,12 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.skelethon.requesters.ValidatedCrudRequester;
 import requests.steps.AdminSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
+import requests.steps.UserSteps;
 
 import java.util.stream.Stream;
 
@@ -35,15 +30,7 @@ public class UpdateProfileTest extends BaseTest {
         userRequest = AdminSteps.createUser();
 
         defaultName = UpdateProfileRequest.DEFAULT_NAME;
-        UpdateProfileRequest initialProfileRequest = UpdateProfileRequest.builder()
-                .name(defaultName)
-                .build();
-
-        new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_UPDATE,
-                ResponseSpecs.requestReturnsOK()
-        ).update(0, initialProfileRequest);
+        UserSteps.updateProfile(userRequest, defaultName);
 
         isSetupDone = true;
     }
@@ -51,26 +38,7 @@ public class UpdateProfileTest extends BaseTest {
     @BeforeEach
     @Step("Восстанавливаем имя перед КАЖДЫМ тестом")
     public void restoreDefaultName() {
-        UpdateProfileRequest restoreRequest = UpdateProfileRequest.builder()
-                .name(defaultName)
-                .build();
-
-        new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_UPDATE,
-                ResponseSpecs.requestReturnsOK()
-        ).update(0, restoreRequest);
-    }
-
-    @Step("Метод для получения текущего имени через GET")
-    private static String getCurrentName() {
-        CustomerResponse response = new ValidatedCrudRequester<CustomerResponse>(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
-                ResponseSpecs.requestReturnsOK()
-        ).get(0);
-
-        return response != null ? response.getName() : "";
+        UserSteps.updateProfile(userRequest, defaultName);
     }
 
     public static Stream<Arguments> nameValidData() {
@@ -84,15 +52,7 @@ public class UpdateProfileTest extends BaseTest {
     @ParameterizedTest
     @Step("Проверка позитивного сценария, 2 длинных слова, 2 буквы")
     public void userCanUpdateNameWithValidValue(String updatedName) {
-        UpdateProfileRequest updateRequest = UpdateProfileRequest.builder()
-                .name(updatedName)
-                .build();
-
-        UpdateProfileResponse response = new ValidatedCrudRequester<UpdateProfileResponse>(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_UPDATE,
-                ResponseSpecs.requestReturnsOK()
-        ).update(0, updateRequest);
+        UpdateProfileResponse response = UserSteps.updateProfile(userRequest, updatedName);
 
         softly.assertThat(response.getMessage())
                 .as("Сообщение в ответе")
@@ -112,7 +72,7 @@ public class UpdateProfileTest extends BaseTest {
                     .isEqualTo(userRequest.getUsername());
         }
 
-        String nameAfter = getCurrentName();
+        String nameAfter = UserSteps.getCurrentName(userRequest);
         softly.assertThat(nameAfter)
                 .as("Имя после обновления")
                 .isEqualTo(updatedName);
@@ -131,26 +91,19 @@ public class UpdateProfileTest extends BaseTest {
     @ParameterizedTest
     @Step("Проверка негативных сценариев: пустое имя, 1 слово, 3 слова, спецсимволы, цифры")
     public void userCannotUpdateNameWithInvalidValue(String updatedName, String errorValue) {
-        String nameBefore = getCurrentName();
+        String nameBefore = UserSteps.getCurrentName(userRequest);
 
         UpdateProfileRequest updateRequest = UpdateProfileRequest.builder()
                 .name(updatedName)
                 .build();
 
-        String actualErrorValue = new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_UPDATE,
-                ResponseSpecs.requestReturnsBadRequest()
-        ).update(0, updateRequest)
-                .extract()
-                .body()
-                .asString();
+        String actualErrorValue = UserSteps.updateProfileWithError(userRequest, updatedName);
 
         softly.assertThat(actualErrorValue)
                 .as("Сообщение об ошибке для имени '%s'", updatedName)
                 .isEqualTo(errorValue);
 
-        String nameAfter = getCurrentName();
+        String nameAfter = UserSteps.getCurrentName(userRequest);
         softly.assertThat(nameAfter)
                 .as("Имя не должно измениться при попытке обновления с невалидным значением: %s", updatedName)
                 .isEqualTo(nameBefore);

@@ -3,7 +3,10 @@ package iteration_2;
 import Base.BaseTest;
 import generators.RandomData;
 import io.qameta.allure.Step;
-import models.*;
+import models.CreateUserRequest;
+import models.TransactionResponse;
+import models.UserDepositRequest;
+import models.UserDepositResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,9 +14,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
 import requests.skelethon.requesters.ValidatedCrudRequester;
 import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -32,39 +35,14 @@ public class UserDepositTest extends BaseTest {
     public static void testSetup() {
         if (isSetupDone) return;
         userRequest = AdminSteps.createUser();
-
-        new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.ACCOUNTS,
-                ResponseSpecs.entityWasCreated())
-                .post();
+        UserSteps.createAccount(userRequest);
         isSetupDone = true;
     }
 
     @BeforeEach
     @Step("Добавляем аккаунт")
     public void createNewAccount() {
-        CreateAccountResponse response = new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.ACCOUNTS,
-                ResponseSpecs.entityWasCreated()
-        ).post();
-        testAccountId = response.getId();
-    }
-
-    @Step("Получаем баланс")
-    private static double getBalance(int accountId) {
-        AccountResponse[] accounts = new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        ).getAndExtract(Endpoint.CUSTOMER_ACCOUNTS.getUrl(), AccountResponse[].class);
-
-        return java.util.Arrays.stream(accounts)
-                .filter(account -> account.getId() == accountId)
-                .findFirst()
-                .map(AccountResponse::getBalance)
-                .orElseThrow(() -> new AssertionError("Аккаунт с ID " + accountId + " не найден"));
+        testAccountId = UserSteps.createAccount(userRequest);
     }
 
     public static Stream<Arguments> depositValidData() {
@@ -79,19 +57,17 @@ public class UserDepositTest extends BaseTest {
     @ParameterizedTest
     @Step("Проверка позитивного сценария и граничных значений")
     public void userCanAddDepositWithValidValue(double depositAmount) {
-        double balanceBefore = getBalance(testAccountId);
+        double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
         double expectedBalance = balanceBefore + depositAmount;
-
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
-                .id(testAccountId)
-                .balance(depositAmount)
-                .build();
 
         UserDepositResponse response = new ValidatedCrudRequester<UserDepositResponse>(
                 RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
                 Endpoint.DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
-        ).post(depositRequest);
+        ).post(UserDepositRequest.builder()
+                .id(testAccountId)
+                .balance(depositAmount)
+                .build());
 
         softly.assertThat(response.getId())
                 .as("ID аккаунта")
@@ -120,7 +96,7 @@ public class UserDepositTest extends BaseTest {
                 .as("ID последней транзакции")
                 .isGreaterThan(0);
 
-        double balanceAfter = getBalance(testAccountId);
+        double balanceAfter = UserSteps.getBalance(userRequest, testAccountId);
         softly.assertThat(balanceAfter)
                 .as("Баланс должен увеличиться на %.2f", depositAmount)
                 .isEqualTo(expectedBalance, within(0.01));
@@ -138,27 +114,15 @@ public class UserDepositTest extends BaseTest {
     @ParameterizedTest
     @Step("Проверка негативных сценариев и граничных значений")
     public void userCannotAddDepositWithInvalidValue(double depositAmount, String errorValue) {
-        double balanceBefore = getBalance(testAccountId);
+        double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
 
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
-                .id(testAccountId)
-                .balance(depositAmount)
-                .build();
-
-        String actualErrorMessage = new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.DEPOSIT,
-                ResponseSpecs.requestReturnsBadRequest()
-        ).post(depositRequest)
-                .extract()
-                .body()
-                .asString();
+        String actualErrorMessage = UserSteps.addDepositWithError(userRequest, testAccountId, depositAmount);
 
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке для суммы %s", depositAmount)
                 .isEqualTo(errorValue);
 
-        double balanceAfter = getBalance(testAccountId);
+        double balanceAfter = UserSteps.getBalance(userRequest, testAccountId);
         softly.assertThat(balanceAfter)
                 .as("Баланс после неудачного депозита (сумма: %s)", depositAmount)
                 .isEqualByComparingTo(balanceBefore);
@@ -167,31 +131,18 @@ public class UserDepositTest extends BaseTest {
     @Test
     @Step("Проверка, что невозможно добавить депозит на чужой аккаунт")
     public void userCannotAddDepositToDifferentAccount() {
-        // получаем баланс ДО попытки депозита
-        double balanceBefore = getBalance(testAccountId);
-        int differentAccountId = 2; // чужой аккаунт
+        double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
+        int differentAccountId = 2;
 
         double depositAmount = RandomData.getBalance();
 
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
-                .id(differentAccountId)
-                .balance(depositAmount)
-                .build();
-
-        String actualErrorMessage = new CrudRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                Endpoint.DEPOSIT,
-                ResponseSpecs.requestReturnsForbidden()
-        ).post(depositRequest)
-                .extract()
-                .body()
-                .asString();
+        String actualErrorMessage = UserSteps.addDepositToDifferentAccountWithError(userRequest, differentAccountId, depositAmount);
 
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке при попытке депозита на чужой аккаунт")
                 .isEqualTo(UNAUTHORIZED_ACCESS_TO_ACCOUNT);
 
-        double balanceAfter = getBalance(testAccountId);
+        double balanceAfter = UserSteps.getBalance(userRequest, testAccountId);
         softly.assertThat(balanceAfter)
                 .as("Баланс после попытки депозита на чужой аккаунт")
                 .isEqualTo(balanceBefore);
