@@ -66,4 +66,12 @@ public class RandomData {
     public static String generateInvalidNameWithRandomAscii() {
         return RandomStringUtils.randomAlphabetic(1, 8) + RandomStringUtils.randomAscii(7) + " " + RandomStringUtils.randomAlphabetic(1, 8) + RandomStringUtils.randomAscii(7);
     }
+
+    public static String generateTwoLetters() {
+        return RandomStringUtils.randomAlphabetic(1, 2);
+    }
+
+    public static String generateSpaces() {
+        return "   ";
+    }
 }

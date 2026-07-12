@@ -66,9 +66,13 @@ public class CrudRequester extends HttpRequest implements CrudEndpointInterface 
 
     @Override
     public ValidatableResponse delete(int id) {
-        String url = endpoint.getUrl().contains("{id}")
-                ? endpoint.getUrl().replace("{id}", String.valueOf(id))
-                : endpoint.getUrl() + (id > 0 ? "/" + id : "");
+        String url = endpoint.getUrl();
+        if (url.contains("{id}") || url.contains("{accountId}")) {
+            url = url.replace("{id}", String.valueOf(id))
+                    .replace("{accountId}", String.valueOf(id));
+        } else if (id > 0) {
+            url = url + "/" + id;
+        }
         return given()
                 .spec(requestSpecification)
                 .delete(url)

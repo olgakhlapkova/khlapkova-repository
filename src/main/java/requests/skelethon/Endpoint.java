@@ -14,7 +14,7 @@ public enum Endpoint {
     ),
 
     ADMIN_USER_DELETE(
-            "/admin/users",
+            "/admin/users/{id}",
             null,
             null
     ),
@@ -46,7 +46,7 @@ public enum Endpoint {
     ACCOUNTS_DELETE(
             "/accounts/{accountId}",
             null,
-            null
+            DeleteAccountResponse.class
     ),
 
     TRANSFER(

@@ -156,4 +156,39 @@ public class UserSteps {
                 .body()
                 .asString();
     }
+
+    @Step("Удаление аккаунта")
+    public static DeleteAccountResponse deleteAccount(CreateUserRequest userRequest, int accountId) {
+        return new ValidatedCrudRequester<DeleteAccountResponse>(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.ACCOUNTS_DELETE,
+                ResponseSpecs.accountDeletedSuccessfully()
+        ).delete(accountId);
+    }
+
+    @Step("Удаление аккаунта и получение сообщения")
+    public static String deleteAccountAndGetMessage(CreateUserRequest userRequest, int accountId) {
+        DeleteAccountResponse response = deleteAccount(userRequest, accountId);
+        return response.getMessage();
+    }
+
+    @Step("Удаление аккаунта с возвратом ID")
+    public static int deleteAccountAndGetId(CreateUserRequest userRequest, int accountId) {
+        DeleteAccountResponse response = deleteAccount(userRequest, accountId);
+        return response.getAccountId();
+    }
+
+    // ИЗМЕНЕНИЕ: метод для удаления всех аккаунтов пользователя
+    @Step("Удаление всех аккаунтов пользователя")
+    public static void deleteAllAccounts(CreateUserRequest userRequest) {
+        AccountResponse[] accounts = new CrudRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_ACCOUNTS,
+                ResponseSpecs.requestReturnsOK()
+        ).getAndExtract(Endpoint.CUSTOMER_ACCOUNTS.getUrl(), AccountResponse[].class);
+
+        for (AccountResponse account : accounts) {
+            deleteAccount(userRequest, account.getId());
+        }
+    }
 }

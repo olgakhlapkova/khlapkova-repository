@@ -35,7 +35,9 @@ public class UserDepositTest extends BaseTest {
     public static void testSetup() {
         if (isSetupDone) return;
         userRequest = AdminSteps.createUser();
-        UserSteps.createAccount(userRequest);
+        registerUser(userRequest);
+        int accountId = UserSteps.createAccount(userRequest);
+        registerAccount(accountId);
         isSetupDone = true;
     }
 
@@ -43,6 +45,7 @@ public class UserDepositTest extends BaseTest {
     @Step("Добавляем аккаунт")
     public void createNewAccount() {
         testAccountId = UserSteps.createAccount(userRequest);
+        registerAccount(testAccountId);
     }
 
     public static Stream<Arguments> depositValidData() {

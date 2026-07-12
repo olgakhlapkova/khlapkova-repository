@@ -29,6 +29,7 @@ public class UpdateProfileTest extends BaseTest {
     public static void testSetup() {
         if (isSetupDone) return;
         userRequest = AdminSteps.createUser();
+        registerUser(userRequest);
 
         defaultName = UpdateProfileRequest.DEFAULT_NAME;
         UserSteps.updateProfile(userRequest, defaultName);

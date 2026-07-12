@@ -28,9 +28,13 @@ public class TransferTest extends BaseTest {
     public static void testSetup() {
         if (isSetupDone) return;
         userRequest = AdminSteps.createUser();
+        registerUser(userRequest);
 
         accountId1 = UserSteps.createAccount(userRequest);
+        registerAccount(accountId1);
+
         accountId2 = UserSteps.createAccount(userRequest);
+        registerAccount(accountId2);
 
         repeat(5, () -> UserSteps.addDeposit(userRequest, accountId1, 5000.0));
         repeat(4, () -> UserSteps.addDeposit(userRequest, accountId2, 5000.0));
@@ -122,6 +126,7 @@ public class TransferTest extends BaseTest {
     @Step("Проверка, что невозможно сделать трансфер на сумму больше, чем баланс")
     public void userCannotTransferWithSumMoreThanUserBalanceTest() {
         int newAccountId = UserSteps.createAccount(userRequest);
+        registerAccount(newAccountId);
 
         double startAmount = RandomData.getAmount();
 
