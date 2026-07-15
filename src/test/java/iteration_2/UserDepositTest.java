@@ -3,10 +3,7 @@ package iteration_2;
 import Base.BaseTest;
 import generators.RandomData;
 import io.qameta.allure.Step;
-import models.CreateUserRequest;
-import models.TransactionResponse;
-import models.UserDepositRequest;
-import models.UserDepositResponse;
+import models.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +17,7 @@ import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.within;
@@ -38,6 +36,15 @@ public class UserDepositTest extends BaseTest {
         registerUser(userRequest);
         int accountId = UserSteps.createAccount(userRequest);
         registerAccount(accountId);
+
+        AccountResponse[] accounts = UserSteps.getAllAccounts(userRequest);
+        boolean accountExists = Arrays.stream(accounts)
+                .anyMatch(account -> account.getId() == accountId);
+
+        if (!accountExists) {
+            throw new AssertionError("Аккаунт с ID " + accountId + " не был создан");
+        }
+
         isSetupDone = true;
     }
 
@@ -46,6 +53,14 @@ public class UserDepositTest extends BaseTest {
     public void createNewAccount() {
         testAccountId = UserSteps.createAccount(userRequest);
         registerAccount(testAccountId);
+
+        AccountResponse[] accounts = UserSteps.getAllAccounts(userRequest);
+        boolean accountExists = Arrays.stream(accounts)
+                .anyMatch(account -> account.getId() == testAccountId);
+
+        softly.assertThat(accountExists)
+                .as("Аккаунт с ID " + testAccountId + " должен существовать после создания")
+                .isTrue();
     }
 
     public static Stream<Arguments> depositValidData() {
@@ -93,7 +108,7 @@ public class UserDepositTest extends BaseTest {
 
         softly.assertThat(lastTransaction.getType())
                 .as("Тип последней транзакции")
-                .isEqualTo("DEPOSIT");
+                .isEqualTo(TRANSACTION_TYPE_DEPOSIT);
 
         softly.assertThat(lastTransaction.getId())
                 .as("ID последней транзакции")

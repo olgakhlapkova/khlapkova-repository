@@ -178,7 +178,6 @@ public class UserSteps {
         return response.getAccountId();
     }
 
-    // ИЗМЕНЕНИЕ: метод для удаления всех аккаунтов пользователя
     @Step("Удаление всех аккаунтов пользователя")
     public static void deleteAllAccounts(CreateUserRequest userRequest) {
         AccountResponse[] accounts = new CrudRequester(
@@ -190,5 +189,14 @@ public class UserSteps {
         for (AccountResponse account : accounts) {
             deleteAccount(userRequest, account.getId());
         }
+    }
+
+    @Step("Получение всех аккаунтов пользователя")
+    public static AccountResponse[] getAllAccounts(CreateUserRequest userRequest) {
+        return new CrudRequester(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.CUSTOMER_ACCOUNTS,
+                ResponseSpecs.requestReturnsOK()
+        ).getAndExtract(Endpoint.CUSTOMER_ACCOUNTS.getUrl(), AccountResponse[].class);
     }
 }

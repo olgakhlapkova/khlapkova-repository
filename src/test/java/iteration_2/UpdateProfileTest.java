@@ -34,6 +34,11 @@ public class UpdateProfileTest extends BaseTest {
         defaultName = UpdateProfileRequest.DEFAULT_NAME;
         UserSteps.updateProfile(userRequest, defaultName);
 
+        String currentName = UserSteps.getCurrentName(userRequest);
+        if (!defaultName.equals(currentName)) {
+            throw new AssertionError("Имя не было установлено. Ожидалось: " + defaultName + ", но было: " + currentName);
+        }
+
         isSetupDone = true;
     }
 
@@ -41,6 +46,10 @@ public class UpdateProfileTest extends BaseTest {
     @Step("Восстанавливаем имя перед КАЖДЫМ тестом")
     public void restoreDefaultName() {
         UserSteps.updateProfile(userRequest, defaultName);
+        String currentName = UserSteps.getCurrentName(userRequest);
+        softly.assertThat(currentName)
+                .as("Имя после восстановления")
+                .isEqualTo(defaultName);
     }
 
     public static Stream<Arguments> nameValidData() {

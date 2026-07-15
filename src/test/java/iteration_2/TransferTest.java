@@ -3,7 +3,9 @@ package iteration_2;
 import Base.BaseTest;
 import generators.RandomData;
 import io.qameta.allure.Step;
+import models.AccountResponse;
 import models.CreateUserRequest;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +20,10 @@ import static org.assertj.core.api.Assertions.within;
 import static specs.ResponseSpecs.*;
 
 public class TransferTest extends BaseTest {
+    private static final double DEPOSIT_AMOUNT = 5000.0;
+    private static final int DEPOSIT_COUNT_ACCOUNT1 = 5;
+    private static final int DEPOSIT_COUNT_ACCOUNT2 = 4;
+
     private static CreateUserRequest userRequest;
     private static int accountId1;
     private static int accountId2;
@@ -36,8 +42,35 @@ public class TransferTest extends BaseTest {
         accountId2 = UserSteps.createAccount(userRequest);
         registerAccount(accountId2);
 
-        repeat(5, () -> UserSteps.addDeposit(userRequest, accountId1, 5000.0));
-        repeat(4, () -> UserSteps.addDeposit(userRequest, accountId2, 5000.0));
+        repeat(DEPOSIT_COUNT_ACCOUNT1, () -> UserSteps.addDeposit(userRequest, accountId1, DEPOSIT_AMOUNT));
+        repeat(DEPOSIT_COUNT_ACCOUNT2, () -> UserSteps.addDeposit(userRequest, accountId2, DEPOSIT_AMOUNT));
+
+        AccountResponse[] accounts = UserSteps.getAllAccounts(userRequest);
+        SoftAssertions softly = new SoftAssertions();
+
+        softly.assertThat(accounts)
+                .as("Список аккаунтов пользователя")
+                .anyMatch(account -> account.getId() == accountId1);
+
+        softly.assertThat(accounts)
+                .as("Список аккаунтов пользователя")
+                .anyMatch(account -> account.getId() == accountId2);
+
+        double actualBalance1 = UserSteps.getBalance(userRequest, accountId1);
+        double actualBalance2 = UserSteps.getBalance(userRequest, accountId2);
+
+        double expectedBalance1 = DEPOSIT_COUNT_ACCOUNT1 * DEPOSIT_AMOUNT; // 25000
+        double expectedBalance2 = DEPOSIT_COUNT_ACCOUNT2 * DEPOSIT_AMOUNT; // 20000
+
+        softly.assertThat(actualBalance1)
+                .as("Баланс accountId1")
+                .isEqualTo(expectedBalance1, within(0.01));
+
+        softly.assertThat(actualBalance2)
+                .as("Баланс accountId2")
+                .isEqualTo(expectedBalance2, within(0.01));
+
+        softly.assertAll();
 
         isSetupDone = true;
     }
@@ -48,7 +81,7 @@ public class TransferTest extends BaseTest {
                 Arguments.of(accountId1, accountId2, 0.01),
                 Arguments.of(accountId1, accountId2, 9999.99),
                 Arguments.of(accountId1, accountId2, 10000),
-                Arguments.of(accountId2, accountId1, 100));
+                Arguments.of(accountId2, accountId1, RandomData.getAmount()));
     }
 
     @MethodSource("transferValidData")

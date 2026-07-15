@@ -7,6 +7,7 @@ import org.hamcrest.Matchers;
 
 public class ResponseSpecs {
     public static final String USERNAME_ERROR_KEY = "username";
+    public static final String TRANSACTION_TYPE_DEPOSIT = "DEPOSIT";
 
     //Сообщения для CreateUser
     public static final String BLANK_USERNAME = "Username cannot be blank";
