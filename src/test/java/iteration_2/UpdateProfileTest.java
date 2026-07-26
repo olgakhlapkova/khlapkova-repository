@@ -2,19 +2,17 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
+import io.qameta.allure.Step;
 import models.CreateUserRequest;
 import models.UpdateProfileRequest;
 import models.UpdateProfileResponse;
-import models.UserRole;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
-import requests.UpdateProfileRequester;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 
 import java.util.stream.Stream;
 
@@ -27,83 +25,46 @@ public class UpdateProfileTest extends BaseTest {
     private static boolean isSetupDone = false;
 
     @BeforeAll
+    @Step("Создаем юзера и устанавливаем ему начальное имя Default User")
     public static void testSetup() {
         if (isSetupDone) return;
-        //создаем данные для регистрации нового юзера
-        userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        userRequest = AdminSteps.createUser();
+        registerUser(userRequest);
 
-        //админом создаем юзера
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
-
-        // устанавливаем начальное имя "Default User"
         defaultName = UpdateProfileRequest.DEFAULT_NAME;
-        UpdateProfileRequest initialProfileRequest = UpdateProfileRequest.builder()
-                .name(defaultName)
-                .build();
+        UserSteps.updateProfile(userRequest, defaultName);
 
-        new UpdateProfileRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).post(initialProfileRequest);
+        String currentName = UserSteps.getCurrentName(userRequest);
+        if (!defaultName.equals(currentName)) {
+            throw new AssertionError("Имя не было установлено. Ожидалось: " + defaultName + ", но было: " + currentName);
+        }
 
         isSetupDone = true;
     }
 
-    // Восстанавливаем имя перед КАЖДЫМ тестом
     @BeforeEach
+    @Step("Восстанавливаем имя перед КАЖДЫМ тестом")
     public void restoreDefaultName() {
-        UpdateProfileRequest restoreRequest = UpdateProfileRequest.builder()
-                .name(defaultName)
-                .build();
-
-        new UpdateProfileRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).post(restoreRequest);
-    }
-
-    // Метод для получения текущего имени через GET
-    private static String getCurrentName() {
-        return new UpdateProfileRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).getCurrentName();
+        UserSteps.updateProfile(userRequest, defaultName);
+        String currentName = UserSteps.getCurrentName(userRequest);
+        softly.assertThat(currentName)
+                .as("Имя после восстановления")
+                .isEqualTo(defaultName);
     }
 
     public static Stream<Arguments> nameValidData() {
         return Stream.of(
-                // позитивный, 2 слова
-                Arguments.of("Jane Air"),
-                // 2 длинных слова
-                Arguments.of("sdfdafdagdafgdfgadfgfdgfdagdbcbdafafdgd dgdgafgadfbabafadgadgafbadfgadfgadfgdfadfbadfg"),
-                // 2 буквы
-                Arguments.of("a a"));
+                Arguments.of(RandomData.generateRandomValidName()),
+                Arguments.of(RandomData.generateRandomLongValidName()),
+                Arguments.of(RandomData.generateRandomShortValidName()));
     }
 
     @MethodSource("nameValidData")
     @ParameterizedTest
+    @Step("Проверка позитивного сценария, 2 длинных слова, 2 буквы")
     public void userCanUpdateNameWithValidValue(String updatedName) {
-        // создаем запрос на обновление имени
-        UpdateProfileRequest updateRequest = UpdateProfileRequest.builder()
-                .name(updatedName)
-                .build();
+        UpdateProfileResponse response = UserSteps.updateProfile(userRequest, updatedName);
 
-        // отправляем запрос и получаем ответ
-        UpdateProfileResponse response = new UpdateProfileRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).post(updateRequest)
-                .extract()
-                .as(UpdateProfileResponse.class);
-
-        // проверяем ответ через объект
         softly.assertThat(response.getMessage())
                 .as("Сообщение в ответе")
                 .isEqualTo(PROFILE_UPDATED_SUCCESSFULLY);
@@ -122,8 +83,7 @@ public class UpdateProfileTest extends BaseTest {
                     .isEqualTo(userRequest.getUsername());
         }
 
-        // проверяем, что имя действительно обновилось через отдельный GET запрос
-        String nameAfter = getCurrentName();
+        String nameAfter = UserSteps.getCurrentName(userRequest);
         softly.assertThat(nameAfter)
                 .as("Имя после обновления")
                 .isEqualTo(updatedName);
@@ -131,46 +91,30 @@ public class UpdateProfileTest extends BaseTest {
 
     public static Stream<Arguments> nameInvalidData() {
         return Stream.of(
-                // негативные
-                // пустое имя
-                Arguments.of("", NAME_INVALID_ERROR),
-                // 1 слово
-                Arguments.of("John", NAME_INVALID_ERROR),
-                // 3 слова
-                Arguments.of("John Junior Smith", NAME_INVALID_ERROR),
-                // имя содержит спецсимволы $%^&*()@#
-                Arguments.of("John$%^&*()@# Smith$%^&*()@#", NAME_INVALID_ERROR),
-                // имя содержит цифры 0123456789
-                Arguments.of("John0123456789 Smith0123456789", NAME_INVALID_ERROR));
+                Arguments.of(RandomData.generateEmptyName(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateOneWordName(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateThreeWordsName(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateInvalidNameWithRandomAscii(), NAME_INVALID_ERROR),
+                Arguments.of(RandomData.generateInvalidNameWithNumbers(), NAME_INVALID_ERROR));
     }
 
     @MethodSource("nameInvalidData")
     @ParameterizedTest
+    @Step("Проверка негативных сценариев: пустое имя, 1 слово, 3 слова, спецсимволы, цифры")
     public void userCannotUpdateNameWithInvalidValue(String updatedName, String errorValue) {
-        // получаем имя ДО попытки обновления
-        String nameBefore = getCurrentName();
+        String nameBefore = UserSteps.getCurrentName(userRequest);
 
-        // создаем запрос с невалидным именем
         UpdateProfileRequest updateRequest = UpdateProfileRequest.builder()
                 .name(updatedName)
                 .build();
 
-        // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorValue = new UpdateProfileRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest()
-        ).post(updateRequest)
-                .extract()
-                .body()
-                .asString();
+        String actualErrorValue = UserSteps.updateProfileWithError(userRequest, updatedName);
 
-        // проверяем сообщение об ошибке
         softly.assertThat(actualErrorValue)
                 .as("Сообщение об ошибке для имени '%s'", updatedName)
                 .isEqualTo(errorValue);
 
-        // проверяем, что имя НЕ ИЗМЕНИЛОСЬ
-        String nameAfter = getCurrentName();
+        String nameAfter = UserSteps.getCurrentName(userRequest);
         softly.assertThat(nameAfter)
                 .as("Имя не должно измениться при попытке обновления с невалидным значением: %s", updatedName)
                 .isEqualTo(nameBefore);

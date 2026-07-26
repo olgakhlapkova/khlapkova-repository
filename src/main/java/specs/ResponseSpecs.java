@@ -6,6 +6,14 @@ import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 
 public class ResponseSpecs {
+    public static final String USERNAME_ERROR_KEY = "username";
+    public static final String TRANSACTION_TYPE_DEPOSIT = "DEPOSIT";
+
+    //Сообщения для CreateUser
+    public static final String BLANK_USERNAME = "Username cannot be blank";
+    public static final String USERNAME_ALLOWED_SYMBOLS = "Username must contain only letters, digits, dashes, underscores, and dots";
+    public static final String USERNAME_ALLOWED_SIZE = "Username must be between 3 and 15 characters";
+
     // Сообщения для UpdateProfile
     public static final String PROFILE_UPDATED_SUCCESSFULLY = "Profile updated successfully";
     public static final String NAME_INVALID_ERROR = "Name must contain two words with letters only";
@@ -19,6 +27,11 @@ public class ResponseSpecs {
     public static final String DEPOSIT_AMOUNT_MIN_ERROR = "Deposit amount must be at least 0.01";
     public static final String DEPOSIT_AMOUNT_MAX_ERROR = "Deposit amount cannot exceed 5000";
     public static final String UNAUTHORIZED_ACCESS_TO_ACCOUNT = "Unauthorized access to account";
+
+    // Сообщения для удаления User и Account
+    public static final String ACCOUNT_DELETED = "Account deleted successfully";
+    public static final String USER_DELETED_PREFIX = "User with ID ";
+    public static final String USER_DELETED_SUFFIX = " deleted successfully.";
 
     private ResponseSpecs() {}
 
@@ -51,9 +64,31 @@ public class ResponseSpecs {
                 .build();
     }
 
+    public static ResponseSpecification requestReturnsBadRequestWithMessages(String errorKey, String... expectedMessages) {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .expectBody(errorKey, Matchers.hasItems(expectedMessages))
+                .build();
+    }
+
     public static ResponseSpecification requestReturnsForbidden() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_FORBIDDEN)
+                .build();
+    }
+
+    public static ResponseSpecification accountDeletedSuccessfully() {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .expectBody("message", Matchers.equalTo(ACCOUNT_DELETED))
+                .build();
+    }
+
+    public static ResponseSpecification userDeletedSuccessfully(int userId) {
+        String expectedMessage = USER_DELETED_PREFIX + userId + USER_DELETED_SUFFIX;
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .expectBody(Matchers.equalTo(expectedMessage))
                 .build();
     }
 }

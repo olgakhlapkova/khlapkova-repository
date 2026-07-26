@@ -2,18 +2,17 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
+import io.qameta.allure.Step;
+import models.AccountResponse;
 import models.CreateUserRequest;
-import models.TransferRequest;
-import models.UserDepositRequest;
-import models.UserRole;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.*;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 
 import java.util.stream.Stream;
 
@@ -21,108 +20,81 @@ import static org.assertj.core.api.Assertions.within;
 import static specs.ResponseSpecs.*;
 
 public class TransferTest extends BaseTest {
+    private static final double DEPOSIT_AMOUNT = 5000.0;
+    private static final int DEPOSIT_COUNT_ACCOUNT1 = 5;
+    private static final int DEPOSIT_COUNT_ACCOUNT2 = 4;
+
     private static CreateUserRequest userRequest;
     private static int accountId1;
     private static int accountId2;
     private static boolean isSetupDone = false;
 
     @BeforeAll
+    @Step("Создаем юзера с 2 аккаунтами, добавляем депозиты (account1 = 5*5000 = 25000, account2 = 4*5000 = 20000")
     public static void testSetup() {
         if (isSetupDone) return;
-        //создаем данные для регистрации нового юзера
-        userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        userRequest = AdminSteps.createUser();
+        registerUser(userRequest);
 
-        //админом создаем юзера
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        accountId1 = UserSteps.createAccount(userRequest);
+        registerAccount(accountId1);
 
-        //создаем 2 аккаунта
-        accountId1 = createNewAccount();
-        accountId2 = createNewAccount();
+        accountId2 = UserSteps.createAccount(userRequest);
+        registerAccount(accountId2);
 
-        // добавляем депозиты на оба аккаунта (account1 = 5*5000 = 25000, account2 = 4*5000 = 20000)
-        for (int i = 0; i < 5; i++) {
-            addDeposit(accountId1, 5000.0);
-        }
-        for (int i = 0; i < 4; i++) {
-            addDeposit(accountId2, 5000.0);
-        }
+        repeat(DEPOSIT_COUNT_ACCOUNT1, () -> UserSteps.addDeposit(userRequest, accountId1, DEPOSIT_AMOUNT));
+        repeat(DEPOSIT_COUNT_ACCOUNT2, () -> UserSteps.addDeposit(userRequest, accountId2, DEPOSIT_AMOUNT));
+
+        AccountResponse[] accounts = UserSteps.getAllAccounts(userRequest);
+        SoftAssertions softly = new SoftAssertions();
+
+        softly.assertThat(accounts)
+                .as("Список аккаунтов пользователя")
+                .anyMatch(account -> account.getId() == accountId1);
+
+        softly.assertThat(accounts)
+                .as("Список аккаунтов пользователя")
+                .anyMatch(account -> account.getId() == accountId2);
+
+        double actualBalance1 = UserSteps.getBalance(userRequest, accountId1);
+        double actualBalance2 = UserSteps.getBalance(userRequest, accountId2);
+
+        double expectedBalance1 = DEPOSIT_COUNT_ACCOUNT1 * DEPOSIT_AMOUNT; // 25000
+        double expectedBalance2 = DEPOSIT_COUNT_ACCOUNT2 * DEPOSIT_AMOUNT; // 20000
+
+        softly.assertThat(actualBalance1)
+                .as("Баланс accountId1")
+                .isEqualTo(expectedBalance1, within(0.01));
+
+        softly.assertThat(actualBalance2)
+                .as("Баланс accountId2")
+                .isEqualTo(expectedBalance2, within(0.01));
+
+        softly.assertAll();
 
         isSetupDone = true;
     }
 
-    public static int createNewAccount() {
-        return new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated()
-        ).createAndGetId();
-    }
-
-    private static void addDeposit(int accountId, double amount) {
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
-                .id(accountId)
-                .balance(amount)
-                .build();
-
-        new UserDepositRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).post(depositRequest);
-    }
-
-    private static double getBalance(int accountId) {
-        Double balance = new AccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).getBalance(accountId);
-
-        if (balance == null) {
-            throw new AssertionError("Аккаунт с ID " + accountId + " не найден");
-        }
-        return balance;
-    }
-
     public static Stream<Arguments> transferValidData() {
         return Stream.of(
-                // позитивный
-                Arguments.of(accountId1, accountId2, 1000),
-                // граничные значения
+                Arguments.of(accountId1, accountId2, RandomData.getAmount()),
                 Arguments.of(accountId1, accountId2, 0.01),
                 Arguments.of(accountId1, accountId2, 9999.99),
                 Arguments.of(accountId1, accountId2, 10000),
-                // трансфер в обратную сторону
-                Arguments.of(accountId2, accountId1, 100));
+                Arguments.of(accountId2, accountId1, RandomData.getAmount()));
     }
 
     @MethodSource("transferValidData")
     @ParameterizedTest
+    @Step("Проверка позитивных сценариев и граничных значений")
     public void userCanAddTransferWithValidValue(int senderAccountId, int receiverAccountId, double transferAmount) {
-        // получаем балансы до трансфера
-        double balanceBefore1 = getBalance(senderAccountId);
-        double balanceBefore2 = getBalance(receiverAccountId);
+        double balanceBefore1 = UserSteps.getBalance(userRequest, senderAccountId);
+        double balanceBefore2 = UserSteps.getBalance(userRequest, receiverAccountId);
 
-        // создаем запрос на трансфер
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(senderAccountId)
-                .receiverAccountId(receiverAccountId)
-                .amount(transferAmount)
-                .build();
+        UserSteps.transferMoney(userRequest, senderAccountId, receiverAccountId, transferAmount);
 
-        // отправляем запрос - проверка статуса через ResponseSpecs
-        new TransferRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).post(transferRequest);
-
-        // Проверяем балансы после трансфера
-        double balanceAfter1 = getBalance(senderAccountId);
-        double balanceAfter2 = getBalance(receiverAccountId);
+        double balanceAfter1 = UserSteps.getBalance(userRequest, senderAccountId);
+        double balanceAfter2 = UserSteps.getBalance(userRequest, receiverAccountId);
 
         softly.assertThat(balanceAfter1)
                 .as("Баланс отправителя должен уменьшиться на %.2f", transferAmount)
@@ -135,45 +107,26 @@ public class TransferTest extends BaseTest {
 
     public static Stream<Arguments> transferInvalidData() {
         return Stream.of(
-                // негативные
-                // неверная сумма
                 Arguments.of(accountId1, accountId2, 0, TRANSFER_AMOUNT_MIN_ERROR),
                 Arguments.of(accountId1, accountId2, -100, TRANSFER_AMOUNT_MIN_ERROR),
-                // граничные значения
                 Arguments.of(accountId1, accountId2, 10000.01, TRANSFER_AMOUNT_MAX_ERROR));
     }
 
     @MethodSource("transferInvalidData")
     @ParameterizedTest
+    @Step("Проверка негативных сценариев и граничных значений")
     public void userCannotAddTransferWithInvalidValue(int senderAccountId, int receiverAccountId, double transferAmount, String errorValue) {
-        //получаем балансы до трансфера
-        double balanceBefore1 = getBalance(senderAccountId);
-        double balanceBefore2 = getBalance(receiverAccountId);
+        double balanceBefore1 = UserSteps.getBalance(userRequest, senderAccountId);
+        double balanceBefore2 = UserSteps.getBalance(userRequest, receiverAccountId);
 
-        // создаем запрос на трансфер
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(senderAccountId)
-                .receiverAccountId(receiverAccountId)
-                .amount(transferAmount)
-                .build();
+        String actualErrorValue = UserSteps.transferMoneyWithError(userRequest, senderAccountId, receiverAccountId, transferAmount);
 
-        // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorValue = new TransferRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest()
-        ).post(transferRequest)
-                .extract()
-                .body()
-                .asString();
-
-        // проверяем сообщение об ошибке
         softly.assertThat(actualErrorValue)
                 .as("Сообщение об ошибке для суммы %.2f", transferAmount)
                 .isEqualTo(errorValue);
 
-        // проверяем, что балансы не изменились
-        double balanceAfter1 = getBalance(senderAccountId);
-        double balanceAfter2 = getBalance(receiverAccountId);
+        double balanceAfter1 = UserSteps.getBalance(userRequest, senderAccountId);
+        double balanceAfter2 = UserSteps.getBalance(userRequest, receiverAccountId);
 
         softly.assertThat(balanceAfter1)
                 .as("Баланс отправителя не должен измениться при ошибке")
@@ -185,81 +138,46 @@ public class TransferTest extends BaseTest {
     }
 
     @Test
+    @Step("Проверка, что невозможно осуществить трансфер на несуществующий аккаунт")
     public void userCannotTransferToNonExistentAccount() {
-        // получаем баланс отправителя ДО
-        double balanceBefore = getBalance(accountId1);
-
+        double balanceBefore = UserSteps.getBalance(userRequest, accountId1);
         double transferAmount = RandomData.getAmount();
 
-        // создаем запрос на перевод на несуществующий аккаунт (ID = 999)
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(accountId1)
-                .receiverAccountId(999)
-                .amount(transferAmount)
-                .build();
+        String actualErrorValue = UserSteps.transferMoneyWithError(userRequest, accountId1, RandomData.getRandomAccountId(), transferAmount);
 
-        // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorValue = new TransferRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest()
-        ).post(transferRequest)
-                .extract()
-                .body()
-                .asString();
-
-        // проверяем сообщение об ошибке
         softly.assertThat(actualErrorValue)
                 .as("Сообщение об ошибке при переводе на несуществующий аккаунт")
                 .isEqualTo(INVALID_TRANSFER);
 
-        // проверяем, что баланс отправителя не изменился
-        double balanceAfter = getBalance(accountId1);
+        double balanceAfter = UserSteps.getBalance(userRequest, accountId1);
         softly.assertThat(balanceAfter)
                 .as("Баланс отправителя не должен измениться при переводе на несуществующий аккаунт")
                 .isEqualTo(balanceBefore, within(0.01));
     }
 
-
     @Test
+    @Step("Проверка, что невозможно сделать трансфер на сумму больше, чем баланс")
     public void userCannotTransferWithSumMoreThanUserBalanceTest() {
-        // создаем новый аккаунт у текущего пользователя
-        int newAccountId = createNewAccount();
+        int newAccountId = UserSteps.createAccount(userRequest);
+        registerAccount(newAccountId);
 
         double startAmount = RandomData.getAmount();
 
-        // добавляем депозит на новый аккаунт
-        addDeposit(newAccountId, startAmount);
+        UserSteps.addDeposit(userRequest, newAccountId, startAmount);
 
-        // получаем балансы ДО перевода
-        double balanceBeforeSender = getBalance(newAccountId);
-        double balanceBeforeReceiver = getBalance(accountId2);
+        double balanceBeforeSender = UserSteps.getBalance(userRequest, newAccountId);
+        double balanceBeforeReceiver = UserSteps.getBalance(userRequest, accountId2);
 
         double additionalBiggerAmount = startAmount * 2;
 
-        // создаем запрос на трансфер на сумму x2 больше баланса
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(newAccountId)
-                .receiverAccountId(accountId2)
-                .amount(additionalBiggerAmount)
-                .build();
+        String actualErrorMessage = UserSteps.transferMoneyWithError(userRequest, newAccountId, accountId2, additionalBiggerAmount);
 
-        // отправляем запрос и получаем сообщение об ошибке
-        String actualErrorMessage = new TransferRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest()
-        ).post(transferRequest)
-                .extract()
-                .body()
-                .asString();
-
-        // проверяем сообщение об ошибке
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке при недостатке средств")
                 .isEqualTo(INVALID_TRANSFER);
 
-        // проверяем, что балансы НЕ ИЗМЕНИЛИСЬ
-        double balanceAfterSender = getBalance(newAccountId);
-        double balanceAfterReceiver = getBalance(accountId2);
+        double balanceAfterSender = UserSteps.getBalance(userRequest, newAccountId);
+        double balanceAfterReceiver = UserSteps.getBalance(userRequest, accountId2);
 
         softly.assertThat(balanceAfterSender)
                 .as("Баланс отправителя не должен измениться при недостатке средств")

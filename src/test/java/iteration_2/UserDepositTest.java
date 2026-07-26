@@ -2,26 +2,25 @@ package iteration_2;
 
 import Base.BaseTest;
 import generators.RandomData;
-import models.CreateUserRequest;
-import models.UserDepositRequest;
-import models.UserRole;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Assertions;
+import io.qameta.allure.Step;
+import models.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AccountRequester;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
-import requests.UserDepositRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
+import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.within;
 import static specs.ResponseSpecs.*;
 
 public class UserDepositTest extends BaseTest {
@@ -30,50 +29,43 @@ public class UserDepositTest extends BaseTest {
     private static boolean isSetupDone = false;
 
     @BeforeAll
+    @Step("Создаем юзера и добавляем аккаунт")
     public static void testSetup() {
         if (isSetupDone) return;
+        userRequest = AdminSteps.createUser();
+        registerUser(userRequest);
+        int accountId = UserSteps.createAccount(userRequest);
+        registerAccount(accountId);
 
-        //создаем данные для регистрации нового юзера
-        userRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        AccountResponse[] accounts = UserSteps.getAllAccounts(userRequest);
+        boolean accountExists = Arrays.stream(accounts)
+                .anyMatch(account -> account.getId() == accountId);
 
-        //админом создаем юзера
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+        if (!accountExists) {
+            throw new AssertionError("Аккаунт с ID " + accountId + " не был создан");
+        }
 
         isSetupDone = true;
     }
 
     @BeforeEach
+    @Step("Добавляем аккаунт")
     public void createNewAccount() {
-        testAccountId = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.entityWasCreated()
-        ).createAndGetId();
-    }
+        testAccountId = UserSteps.createAccount(userRequest);
+        registerAccount(testAccountId);
 
-    private static double getBalance(int accountId) {
-        Double balance =  new AccountRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).getBalance(accountId);
+        AccountResponse[] accounts = UserSteps.getAllAccounts(userRequest);
+        boolean accountExists = Arrays.stream(accounts)
+                .anyMatch(account -> account.getId() == testAccountId);
 
-        if (balance == null) {
-            throw new AssertionError("Аккаунт с ID " + accountId + " не найден");
-        }
-        return balance;
+        softly.assertThat(accountExists)
+                .as("Аккаунт с ID " + testAccountId + " должен существовать после создания")
+                .isTrue();
     }
 
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
-                // позитивный
-                Arguments.of(1000.0),
-                // граничные значения
+                Arguments.of(RandomData.getAmount()),
                 Arguments.of(0.01),
                 Arguments.of(4999.99),
                 Arguments.of(5000.0));
@@ -81,112 +73,94 @@ public class UserDepositTest extends BaseTest {
 
     @MethodSource("depositValidData")
     @ParameterizedTest
+    @Step("Проверка позитивного сценария и граничных значений")
     public void userCanAddDepositWithValidValue(double depositAmount) {
-        // получаем баланс ДО депозита
-        double balanceBefore = getBalance(testAccountId);
-
-        //ожидаемый баланс
+        double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
         double expectedBalance = balanceBefore + depositAmount;
 
-        // создаем запрос на депозит
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
+        UserDepositResponse response = new ValidatedCrudRequester<UserDepositResponse>(
+                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.DEPOSIT,
+                ResponseSpecs.requestReturnsOK()
+        ).post(UserDepositRequest.builder()
                 .id(testAccountId)
                 .balance(depositAmount)
-                .build();
+                .build());
 
-        new UserDepositRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK()
-        ).post(depositRequest)
-                .body("id", Matchers.equalTo(testAccountId))
-                .body("balance", Matchers.equalTo((float) expectedBalance))
-                .body("transactions.amount", Matchers.hasItem((float) depositAmount))
-                .body("transactions[-1].id", Matchers.notNullValue())
-                .body("transactions[-1].type", Matchers.equalTo("DEPOSIT"));
+        softly.assertThat(response.getId())
+                .as("ID аккаунта")
+                .isEqualTo(testAccountId);
 
-        // проверяем, что баланс увеличился через отдельный запрос
-        double balanceAfter = getBalance(testAccountId);
-        Assertions.assertEquals(
-                expectedBalance,
-                balanceAfter,
-                0.01,
-                "Баланс должен увеличиться на " + depositAmount
-        );
+        softly.assertThat(response.getBalance())
+                .as("Баланс после депозита")
+                .isEqualTo(expectedBalance, within(0.01));
+
+        softly.assertThat(response.getTransactions())
+                .as("Список транзакций")
+                .isNotEmpty();
+
+        TransactionResponse lastTransaction = response.getTransactions()
+                .get(response.getTransactions().size() - 1);
+
+        softly.assertThat(lastTransaction.getAmount())
+                .as("Сумма последней транзакции")
+                .isEqualTo(depositAmount, within(0.01));
+
+        softly.assertThat(lastTransaction.getType())
+                .as("Тип последней транзакции")
+                .isEqualTo(TRANSACTION_TYPE_DEPOSIT);
+
+        softly.assertThat(lastTransaction.getId())
+                .as("ID последней транзакции")
+                .isGreaterThan(0);
+
+        double balanceAfter = UserSteps.getBalance(userRequest, testAccountId);
+        softly.assertThat(balanceAfter)
+                .as("Баланс должен увеличиться на %.2f", depositAmount)
+                .isEqualTo(expectedBalance, within(0.01));
     }
 
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
-                // негативные
                 Arguments.of(6000.0, DEPOSIT_AMOUNT_MAX_ERROR),
                 Arguments.of(-100.0, DEPOSIT_AMOUNT_MIN_ERROR),
-                // граничные значения
                 Arguments.of(5000.01, DEPOSIT_AMOUNT_MAX_ERROR),
                 Arguments.of(0.0, DEPOSIT_AMOUNT_MIN_ERROR));
     }
 
     @MethodSource("depositInvalidData")
     @ParameterizedTest
+    @Step("Проверка негативных сценариев и граничных значений")
     public void userCannotAddDepositWithInvalidValue(double depositAmount, String errorValue) {
-        // получаем баланс ДО попытки депозита
-        double balanceBefore = getBalance(testAccountId);
+        double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
 
-        // создаем запрос на депозит
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
-                .id(testAccountId)
-                .balance(depositAmount)
-                .build();
+        String actualErrorMessage = UserSteps.addDepositWithError(userRequest, testAccountId, depositAmount);
 
-        // отправляем запрос и получаем ответ
-        String actualErrorMessage = new UserDepositRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest()
-        ).post(depositRequest)
-                .extract()
-                .body()
-                .asString();
-
-        // проверяем сообщение об ошибке
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке для суммы %s", depositAmount)
                 .isEqualTo(errorValue);
 
-        // проверяем, что баланс НЕ ИЗМЕНИЛСЯ
-        double balanceAfter = getBalance(testAccountId);
+        double balanceAfter = UserSteps.getBalance(userRequest, testAccountId);
         softly.assertThat(balanceAfter)
                 .as("Баланс после неудачного депозита (сумма: %s)", depositAmount)
                 .isEqualByComparingTo(balanceBefore);
     }
 
     @Test
+    @Step("Проверка, что невозможно добавить депозит на чужой аккаунт")
     public void userCannotAddDepositToDifferentAccount() {
-        // получаем баланс ДО попытки депозита
-        double balanceBefore = getBalance(testAccountId);
-        int differentAccountId = 2; // чужой аккаунт
+        double balanceBefore = UserSteps.getBalance(userRequest, testAccountId);
+        int differentAccountId = RandomData.getRandomAccountId();
 
         double depositAmount = RandomData.getBalance();
 
-        // создаем запрос на депозит для чужого аккаунта
-        UserDepositRequest depositRequest = UserDepositRequest.builder()
-                .id(differentAccountId)
-                .balance(depositAmount)
-                .build();
+        String actualErrorMessage = UserSteps.addDepositToDifferentAccountWithError(userRequest, differentAccountId, depositAmount);
 
-        // отправляем запрос и получаем ответ
-        String actualErrorMessage = new UserDepositRequester(
-                RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
-                ResponseSpecs.requestReturnsForbidden()
-        ).post(depositRequest)
-                .extract()
-                .body()
-                .asString();
-
-        // проверяем сообщение об ошибке
         softly.assertThat(actualErrorMessage)
                 .as("Сообщение об ошибке при попытке депозита на чужой аккаунт")
                 .isEqualTo(UNAUTHORIZED_ACCESS_TO_ACCOUNT);
 
-        // проверяем, что баланс НЕ ИЗМЕНИЛСЯ
-        double balanceAfter = getBalance(testAccountId);
+        double balanceAfter = UserSteps.getBalance(userRequest, testAccountId);
         softly.assertThat(balanceAfter)
                 .as("Баланс после попытки депозита на чужой аккаунт")
                 .isEqualTo(balanceBefore);

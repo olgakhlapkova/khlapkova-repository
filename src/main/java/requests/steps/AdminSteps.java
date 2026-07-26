@@ -1,0 +1,59 @@
+package requests.steps;
+
+import generators.RandomModelGenerator;
+import io.qameta.allure.Step;
+import models.CreateUserRequest;
+import models.CreateUserResponse;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.skelethon.requesters.ValidatedCrudRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
+
+public class AdminSteps {
+    public static CreateUserRequest createUser() {
+        CreateUserRequest userRequest = RandomModelGenerator.generate(CreateUserRequest.class);
+
+        new ValidatedCrudRequester<CreateUserResponse>(
+                RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_USER,
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        return userRequest;
+    }
+
+    @Step("Создание пользователя и получение его ID")
+    public static int createUserAndGetId() {
+        CreateUserRequest userRequest = RandomModelGenerator.generate(CreateUserRequest.class);
+
+        CreateUserResponse response = new ValidatedCrudRequester<CreateUserResponse>(
+                RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_USER,
+                ResponseSpecs.entityWasCreated())
+                .post(userRequest);
+
+        return response.getId();
+    }
+
+    @Step("Удаление пользователя с ID {userId}")
+    public static String deleteUser(int userId) {
+        return new CrudRequester(
+                RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_USER_DELETE,
+                ResponseSpecs.userDeletedSuccessfully(userId)
+        ).delete(userId)
+                .extract()
+                .body()
+                .asString();
+    }
+
+    @Step("Удаление пользователя с ID {userId} и проверкой")
+    public static void deleteUserAndVerify(int userId) {
+        String response = deleteUser(userId);
+        String expectedMessage = ResponseSpecs.USER_DELETED_PREFIX + userId + ResponseSpecs.USER_DELETED_SUFFIX;
+        if (!response.equals(expectedMessage)) {
+            throw new AssertionError("Expected: " + expectedMessage + ", but was: " + response);
+        }
+    }
+}
