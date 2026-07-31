@@ -1,6 +1,6 @@
-package iteration_2;
+package api.iteration_2;
 
-import Base.BaseTest;
+import api.Base.BaseTest;
 import generators.RandomData;
 import io.qameta.allure.Step;
 import models.AccountResponse;

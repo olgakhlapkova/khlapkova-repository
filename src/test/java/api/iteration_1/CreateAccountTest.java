@@ -1,6 +1,6 @@
-package iteration_1;
+package api.iteration_1;
 
-import Base.BaseTest;
+import api.Base.BaseTest;
 import io.qameta.allure.Step;
 import models.AccountResponse;
 import models.CreateUserRequest;
