@@ -14,6 +14,8 @@ import requests.skelethon.requesters.CrudRequester;
 import requests.steps.AdminSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
+import ui.Base.BaseUITest;
+
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,11 +24,11 @@ import static com.codeborne.selenide.Selenide.*;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CreateAccountTest {
+public class CreateAccountTest extends BaseUITest {
     @BeforeAll
     public static void setupSelenoid() {
         Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.100.2:3000";
+        Configuration.baseUrl = "http://192.168.100.7:3000";
         Configuration.browser = "chrome";
         Configuration.browserSize = "1920x1080";
 
@@ -43,6 +45,7 @@ public class CreateAccountTest {
         //ШАГ 3: юзер логинится в банке
 
         CreateUserRequest user = AdminSteps.createUser();
+        registerUser(user);
 
         String userAuthHeader = new CrudRequester(
                         RequestSpecs.unauthSpec(),
@@ -89,5 +92,7 @@ public class CreateAccountTest {
 
         assertThat(createdAccount).isNotNull();
         assertThat(createdAccount.getBalance()).isZero();
+
+        registerAccount(createdAccount.getId());
     }
 }

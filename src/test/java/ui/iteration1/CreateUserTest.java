@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
 import specs.RequestSpecs;
+import ui.Base.BaseUITest;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -20,11 +21,11 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class CreateUserTest {
+public class CreateUserTest extends BaseUITest {
     @BeforeAll
     public static void setupSelenoid() {
         Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.100.2:3000";
+        Configuration.baseUrl = "http://192.168.100.7:3000";
         Configuration.browser = "chrome";
         Configuration.browserSize = "1920x1080";
 
@@ -75,6 +76,7 @@ public class CreateUserTest {
                 .findFirst().get();
 
         ModelAssertions.assertThatModels(newUser, createdUser).match();
+        registerUser(createdUser.getId());
     }
 
         @Test

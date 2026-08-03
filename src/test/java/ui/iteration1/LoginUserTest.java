@@ -8,16 +8,17 @@ import models.CreateUserRequest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import requests.steps.AdminSteps;
+import ui.Base.BaseUITest;
 
 import java.util.Map;
 
 import static com.codeborne.selenide.Selenide.$;
 
-public class LoginUserTest {
+public class LoginUserTest extends BaseUITest {
     @BeforeAll
     public static void setupSelenoid() {
         Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.100.2:3000";
+        Configuration.baseUrl = "http://192.168.100.7:3000";
         Configuration.browser = "chrome";
         Configuration.browserSize = "1920x1080";
 
@@ -42,6 +43,7 @@ public class LoginUserTest {
     @Test
     public void userCanLoginWithCorrectDataTest() {
         CreateUserRequest user = AdminSteps.createUser();
+        registerUser(user);
 
         Selenide.open("/login");
         $(Selectors.byAttribute("placeholder", "Username")).sendKeys(user.getUsername());

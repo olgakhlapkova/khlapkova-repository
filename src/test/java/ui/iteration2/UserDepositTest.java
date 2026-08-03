@@ -4,36 +4,31 @@ import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.Selenide;
-import generators.RandomData;
 import models.CreateUserRequest;
 import models.LoginUserRequest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.Select;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 import requests.steps.AdminSteps;
 import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
+import ui.Base.BaseUITest;
 
 import java.util.Map;
 
-import static com.codeborne.selenide.Condition.enabled;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.*;
-import static com.codeborne.selenide.files.DownloadActions.click;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.within;
 
-public class UserDepositTest {
+public class UserDepositTest extends BaseUITest {
     @BeforeAll
     public static void setupSelenoid() {
         Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.100.2:3000";
+        Configuration.baseUrl = "http://192.168.100.7:3000";
         Configuration.browser = "chrome";
         Configuration.browserSize = "1920x1080";
 
@@ -47,6 +42,7 @@ public class UserDepositTest {
         //ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
         //Админ залогинился, создал пользователя
         CreateUserRequest user = AdminSteps.createUser();
+        registerUser(user);
 
         // Пользователь залогинился, открыл юзер дашборд
         String userAuthHeader = new CrudRequester(
@@ -63,6 +59,7 @@ public class UserDepositTest {
 
         // Пользователь создал аккаунт
         int accountId = UserSteps.createAccount(user);
+        registerAccount(accountId);
 
         double balanceBefore = UserSteps.getBalance(user, accountId);
 
@@ -114,6 +111,7 @@ public class UserDepositTest {
         //ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
         //Админ залогинился, создал пользователя
         CreateUserRequest user = AdminSteps.createUser();
+        registerUser(user);
 
         // Пользователь залогинился, открыл юзер дашборд
         String userAuthHeader = new CrudRequester(
