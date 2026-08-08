@@ -1,4 +1,4 @@
-package Base;
+package api.Base;
 
 import io.qameta.allure.Step;
 import models.CreateUserRequest;

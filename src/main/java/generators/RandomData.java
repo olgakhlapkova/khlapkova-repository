@@ -24,6 +24,10 @@ public class RandomData {
         return RandomUtils.nextDouble(0.01, 1000.0);
     }
 
+    public static double getBigAmount() {
+        return RandomUtils.nextDouble(10000.1, 20000.0);
+    }
+
     public static int getRandomAccountId() {
         return RandomUtils.nextInt(1000, 3000);
     }
