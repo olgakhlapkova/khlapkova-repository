@@ -1,25 +1,24 @@
 package ui.iteration2;
 
+import api.generators.RandomData;
+import api.models.AccountResponse;
+import api.models.CreateUserRequest;
+import api.models.LoginUserRequest;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
 import com.codeborne.selenide.*;
-import generators.RandomData;
-import models.AccountResponse;
-import models.CreateUserRequest;
-import models.LoginUserRequest;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
 import ui.Base.BaseUITest;
 
 import java.util.Map;
 
-import static api.Base.BaseTest.repeat;
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.*;

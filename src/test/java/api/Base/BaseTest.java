@@ -1,13 +1,13 @@
 package api.Base;
 
 import io.qameta.allure.Step;
-import models.CreateUserRequest;
+import api.models.CreateUserRequest;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 
 import java.util.ArrayList;
 import java.util.List;

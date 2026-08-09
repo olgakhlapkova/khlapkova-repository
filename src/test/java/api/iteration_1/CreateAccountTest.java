@@ -2,18 +2,18 @@ package api.iteration_1;
 
 import api.Base.BaseTest;
 import io.qameta.allure.Step;
-import models.AccountResponse;
-import models.CreateUserRequest;
-import models.DeleteAccountResponse;
+import api.models.AccountResponse;
+import api.models.CreateUserRequest;
+import api.models.DeleteAccountResponse;
 import org.junit.jupiter.api.Test;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
 
-import static specs.ResponseSpecs.ACCOUNT_DELETED;
+import static api.specs.ResponseSpecs.ACCOUNT_DELETED;
 
 public class CreateAccountTest extends BaseTest {
 
