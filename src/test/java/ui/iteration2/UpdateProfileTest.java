@@ -1,24 +1,20 @@
 package ui.iteration2;
 
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
 import api.generators.RandomData;
 import api.models.CreateUserRequest;
 import api.models.LoginUserRequest;
 import api.models.UpdateProfileRequest;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
+import com.codeborne.selenide.Selectors;
+import com.codeborne.selenide.Selenide;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.Alert;
 import ui.Base.BaseUITest;
-
-import java.util.Map;
 
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
@@ -27,18 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class UpdateProfileTest extends BaseUITest {
     private static String defaultName;
-
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.100.7:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true)
-        );
-    }
 
     @Test
     public void userCanUpdateName() {

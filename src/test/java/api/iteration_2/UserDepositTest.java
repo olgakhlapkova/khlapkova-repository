@@ -20,6 +20,7 @@ import api.specs.ResponseSpecs;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static api.specs.ResponseSpecs.*;
 import static org.assertj.core.api.Assertions.within;
 
 public class UserDepositTest extends BaseTest {

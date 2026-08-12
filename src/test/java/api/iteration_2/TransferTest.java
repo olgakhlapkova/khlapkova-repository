@@ -16,6 +16,7 @@ import api.requests.steps.UserSteps;
 
 import java.util.stream.Stream;
 
+import static api.specs.ResponseSpecs.*;
 import static org.assertj.core.api.Assertions.within;
 
 public class TransferTest extends BaseTest {
