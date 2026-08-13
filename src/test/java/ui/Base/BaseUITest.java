@@ -103,13 +103,13 @@ public class BaseUITest extends BaseTest {
         createdUserIds.clear();
     }
 
-    public void authAsUser(String username, String password) {
+    public static void authAsUser(String username, String password) {
         Selenide.open("/");
         String userAuthHeader = RequestSpecs.getUserAuthHeader(username, password);
         executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
     }
 
-    public void authAsUser(CreateUserRequest createUserRequest) {
+    public static void authAsUser(CreateUserRequest createUserRequest) {
         authAsUser(createUserRequest.getUsername(), createUserRequest.getPassword());
     }
 

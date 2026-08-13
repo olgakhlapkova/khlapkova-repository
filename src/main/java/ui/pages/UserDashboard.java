@@ -13,6 +13,7 @@ public class UserDashboard extends BasePage<UserDashboard> {
     private SelenideElement welcomeText = $(Selectors.byClassName("welcome-text"));
     private SelenideElement welcomeTextUsername = $("h2.welcome-text span");
     private SelenideElement depositMoney = $(Selectors.byText("\uD83D\uDCB0 Deposit Money"));
+    private SelenideElement makeATransfer = $(Selectors.byText("\uD83D\uDD04 Make a Transfer"));
     private SelenideElement createNewAccount = $(Selectors.byText("➕ Create New Account"));
     private SelenideElement userInfo = $(".user-info");
     private SelenideElement userInfoUsername = $("div.user-info span.user-name");
@@ -30,6 +31,11 @@ public class UserDashboard extends BasePage<UserDashboard> {
     public DepositMoneyPage openDepositPage(){
         depositMoney.click();
         return UserDashboard.getPage(DepositMoneyPage.class);
+    }
+
+    public TransferPage openTransferPage(){
+        makeATransfer.click();
+        return UserDashboard.getPage(TransferPage.class);
     }
 
     public UserDashboard createNewAccount() {
