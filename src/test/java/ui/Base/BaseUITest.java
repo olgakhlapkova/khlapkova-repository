@@ -3,6 +3,7 @@ package ui.Base;
 import api.Base.BaseTest;
 import api.configs.Config;
 import api.models.CreateUserRequest;
+import api.models.UpdateProfileRequest;
 import api.specs.RequestSpecs;
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
@@ -18,6 +19,7 @@ import java.util.Map;
 
 import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static com.codeborne.selenide.Selenide.refresh;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class BaseUITest extends BaseTest {
     protected static final List<Integer> createdAccountIds = new ArrayList<>();
@@ -109,6 +111,16 @@ public class BaseUITest extends BaseTest {
 
     public void authAsUser(CreateUserRequest createUserRequest) {
         authAsUser(createUserRequest.getUsername(), createUserRequest.getPassword());
+    }
+
+    public void setupUserWithDefaultName(CreateUserRequest user) {
+        String defaultName = UpdateProfileRequest.DEFAULT_NAME;
+        UserSteps.updateProfile(user, defaultName);
+
+        String currentName = UserSteps.getCurrentName(user);
+        assertThat(currentName)
+                .as("Имя пользователя должно быть установлено на значение по умолчанию")
+                .isEqualTo(defaultName);
     }
 
     @AfterEach
