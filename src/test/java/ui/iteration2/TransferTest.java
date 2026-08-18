@@ -93,6 +93,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getTransferPageText().shouldBe(visible);
 
+        //Проверка, что перевод добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -125,6 +126,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getTransferPageText().shouldBe(visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -152,6 +154,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getTransferPageText().shouldBe(visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -179,6 +182,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getTransferPageText().shouldBe(visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -206,6 +210,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getTransferPageText().shouldBe(visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -243,6 +248,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getTransferPageText().shouldBe(visible);
 
+        //Проверка, что перевод добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -279,6 +285,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getRepeatTransferText().shouldBe(visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -311,6 +318,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getMatchingTransactionsText().shouldBe(Condition.visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);
@@ -343,6 +351,7 @@ public class TransferTest extends BaseUITest {
 
         new TransferPage().getMatchingTransactionsText().shouldBe(Condition.visible);
 
+        //Проверка, что перевод НЕ добавлен в API
         SoftAssertions softly = new SoftAssertions();
         double balanceAfterAccount1 = UserSteps.getBalance(user, accountId1);
         double balanceAfterAccount2 = UserSteps.getBalance(user, accountId2);

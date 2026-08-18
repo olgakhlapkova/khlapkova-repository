@@ -30,6 +30,7 @@ public class UserDepositTest extends BaseUITest {
         double depositAmount = RandomData.getAmount();
         new DepositMoneyPage().makeADeposit(accountId, String.valueOf(depositAmount));
 
+        //Проверка, что депозит добавлен в API
         double balanceAfter = UserSteps.getBalance(user, accountId);
         assertThat(balanceAfter)
                 .as("Баланс после депозита")
@@ -66,6 +67,7 @@ public class UserDepositTest extends BaseUITest {
 
         new DepositMoneyPage().getDepositMoneyText().shouldBe(visible);
 
+        //Проверка, что депозит НЕ добавлен в API
         double balanceAfter = UserSteps.getBalance(user, accountId);
         assertThat(balanceAfter)
                 .as("Баланс после депозита")

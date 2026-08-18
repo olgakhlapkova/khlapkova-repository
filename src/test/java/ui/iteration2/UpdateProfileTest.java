@@ -33,6 +33,7 @@ public class UpdateProfileTest extends BaseUITest {
 
         new EditProfilePage().getEditProfileText().shouldBe(visible);
 
+        //Проверка, что имя обновлено в API
         String nameAfterApi = UserSteps.getCurrentName(user);
         assertThat(nameAfterApi)
                 .as("Имя после обновления (API)")
@@ -61,6 +62,7 @@ public class UpdateProfileTest extends BaseUITest {
 
         new EditProfilePage().getEditProfileText().shouldBe(visible);
 
+        //Проверка, что имя НЕ обновлено в API
         String nameAfterApi = UserSteps.getCurrentName(user);
         assertThat(nameAfterApi)
                 .as("Имя после обновления (API)")
