@@ -1,23 +1,23 @@
 package api.iteration_2;
 
 import api.Base.BaseTest;
-import generators.RandomData;
+import api.generators.RandomData;
 import io.qameta.allure.Step;
-import models.AccountResponse;
-import models.CreateUserRequest;
+import api.models.AccountResponse;
+import api.models.CreateUserRequest;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 
 import java.util.stream.Stream;
 
+import static api.specs.ResponseSpecs.*;
 import static org.assertj.core.api.Assertions.within;
-import static specs.ResponseSpecs.*;
 
 public class TransferTest extends BaseTest {
     private static final double DEPOSIT_AMOUNT = 5000.0;

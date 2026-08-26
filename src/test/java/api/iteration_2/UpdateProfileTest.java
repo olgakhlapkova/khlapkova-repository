@@ -1,23 +1,23 @@
 package api.iteration_2;
 
 import api.Base.BaseTest;
-import generators.RandomData;
+import api.generators.RandomData;
 import io.qameta.allure.Step;
-import models.CreateUserRequest;
-import models.UpdateProfileRequest;
-import models.UpdateProfileResponse;
+import api.models.CreateUserRequest;
+import api.models.UpdateProfileRequest;
+import api.models.UpdateProfileResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 
 import java.util.stream.Stream;
 
-import static specs.ResponseSpecs.NAME_INVALID_ERROR;
-import static specs.ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY;
+import static api.specs.ResponseSpecs.NAME_INVALID_ERROR;
+import static api.specs.ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY;
 
 public class UpdateProfileTest extends BaseTest {
     private static CreateUserRequest userRequest;

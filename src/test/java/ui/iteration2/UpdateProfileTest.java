@@ -1,104 +1,37 @@
 package ui.iteration2;
 
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
-import generators.RandomData;
-import models.CreateUserRequest;
-import models.LoginUserRequest;
-import models.UpdateProfileRequest;
-import org.junit.jupiter.api.BeforeAll;
+import api.generators.RandomData;
+import api.models.CreateUserRequest;
+import api.models.UpdateProfileRequest;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
 import ui.Base.BaseUITest;
-
-import java.util.Map;
+import ui.pages.BankAlert;
+import ui.pages.EditProfilePage;
+import ui.pages.UserDashboard;
 
 import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
-import static com.codeborne.selenide.Selenide.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class UpdateProfileTest extends BaseUITest {
-    private static String defaultName;
-
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.100.7:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true)
-        );
-    }
-
     @Test
     public void userCanUpdateName() {
-        //ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        //Админ залогинился, создал пользователя
         CreateUserRequest user = AdminSteps.createUser();
         registerUser(user);
 
-        //Установлено начальное имя пользователя = “Default User”
-        defaultName = UpdateProfileRequest.DEFAULT_NAME;
-        UserSteps.updateProfile(user, defaultName);
+        setupUserWithDefaultName(user);
+        authAsUser(user);
 
-        String currentName = UserSteps.getCurrentName(user);
-        if (!defaultName.equals(currentName)) {
-            throw new AssertionError("Имя не было установлено. Ожидалось: " + defaultName + ", но было: " + currentName);
-        }
+        new UserDashboard().open().openEditProfilePage().getEditProfileText().shouldBe(visible);
 
-        // Пользователь залогинился, открыл юзер дашборд
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
-
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
-        Selenide.open("/dashboard");
-
-        //ШАГИ ТЕСТА
-        //Нажать на имя пользователя рядом с кнопкой Logout
-        $(".user-info").click();
-
-        //Редирект на Edit Profile страницу
-        $(Selectors.byText("✏️ Edit Profile")).shouldBe(visible);
-
-        //Ввести корректное имя из 2х слов
         String updatedName = RandomData.generateRandomShortValidName();
-        $(Selectors.byAttribute("placeholder", "Enter new name"))
-                .shouldBe(visible)
-                .click();
-        sleep(200);
-        $(Selectors.byAttribute("placeholder", "Enter new name")).setValue(updatedName);
+        new EditProfilePage().editUsername(updatedName);
 
-        //Нажать кнопку Save Changes
-        $(Selectors.byText("\uD83D\uDCBE Save Changes")).click();
+        new EditProfilePage().checkAlertMessageAndAccept(BankAlert.NAME_UPDATED_SUCCESSFULLY.getMessage());
 
-        //Ожидание
-        //Алерт, что имя успешно обновлено
-
-        Alert alert = switchTo().alert();
-        String alertText = alert.getText();
-
-        assertThat(alertText).contains("✅ Name updated successfully!");
-
-        alert.accept();
-
-        //Нет редиректа на User Dashboard страницу, пользователь остался на Edit Profile странице
-        $(Selectors.byText("✏️ Edit Profile")).shouldBe(visible);
+        new EditProfilePage().getEditProfileText().shouldBe(visible);
 
         //Проверка, что имя обновлено в API
         String nameAfterApi = UserSteps.getCurrentName(user);
@@ -106,85 +39,38 @@ public class UpdateProfileTest extends BaseUITest {
                 .as("Имя после обновления (API)")
                 .isEqualTo(updatedName);
 
-        //Дополнительная проверка: Имя пользователя обновилось в шапке (после слова Welcome)
-        $(Selectors.byText("\uD83C\uDFE0 Home")).click();
-        $("h2.welcome-text span").shouldHave(text(updatedName));
+        new UserDashboard().openViaHomeButton().getWelcomeTextUsername().shouldHave(text(updatedName));
 
         //Дополнительная проверка: Имя пользователя обновилось в хедере (над username) - здесь баг, раскомментить после фикса
-        //$("div.user-info span.user-name").shouldHave(text(updatedName));
+        //new UserDashboard().getUserInfoUsername().shouldHave(text(updatedName));
     }
 
     @Test
     public void userCannotUpdateName() {
-        //ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        //Админ залогинился, создал пользователя
         CreateUserRequest user = AdminSteps.createUser();
         registerUser(user);
 
-        //Установлено начальное имя пользователя = “Default User”
-        defaultName = UpdateProfileRequest.DEFAULT_NAME;
-        UserSteps.updateProfile(user, defaultName);
+        setupUserWithDefaultName(user);
+        authAsUser(user);
 
-        String currentName = UserSteps.getCurrentName(user);
-        if (!defaultName.equals(currentName)) {
-            throw new AssertionError("Имя не было установлено. Ожидалось: " + defaultName + ", но было: " + currentName);
-        }
+        new UserDashboard().open().openEditProfilePage().getEditProfileText().shouldBe(visible);
 
-        // Пользователь залогинился, открыл юзер дашборд
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
-
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
-        Selenide.open("/dashboard");
-
-        //ШАГИ ТЕСТА
-        //Нажать на имя пользователя рядом с кнопкой Logout
-        $(".user-info").click();
-
-        //Редирект на Edit Profile страницу
-        $(Selectors.byText("✏️ Edit Profile")).shouldBe(visible);
-
-        //Ввести некорректное имя из 1го слова
         String updatedInvalidName = RandomData.generateOneWordName();
-        $(Selectors.byAttribute("placeholder", "Enter new name"))
-                .shouldBe(visible)
-                .click();
-        sleep(200);
-        $(Selectors.byAttribute("placeholder", "Enter new name")).setValue(updatedInvalidName);
+        new EditProfilePage().editUsername(updatedInvalidName);
 
-        //Нажать кнопку Save Changes
-        $(Selectors.byText("\uD83D\uDCBE Save Changes")).click();
+        new EditProfilePage().checkAlertMessageAndAccept(BankAlert.NAME_MUST_CONTAIN_TWO_WORDS.getMessage());
 
-        //Ожидание
-        //Алерт, что имя НЕ обновлено
-
-        Alert alert = switchTo().alert();
-        String alertText = alert.getText();
-
-        assertThat(alertText).contains("Name must contain two words with letters only");
-
-        alert.accept();
-
-        //Нет редиректа на User Dashboard страницу, пользователь остался на Edit Profile странице
-        $(Selectors.byText("✏️ Edit Profile")).shouldBe(visible);
+        new EditProfilePage().getEditProfileText().shouldBe(visible);
 
         //Проверка, что имя НЕ обновлено в API
         String nameAfterApi = UserSteps.getCurrentName(user);
         assertThat(nameAfterApi)
                 .as("Имя после обновления (API)")
-                .isEqualTo(defaultName);
+                .isEqualTo(UpdateProfileRequest.DEFAULT_NAME);
 
-        //Дополнительная проверка: Имя пользователя НЕ обновилось в шапке (после слова Welcome)
-        $(Selectors.byText("\uD83C\uDFE0 Home")).click();
-        $("h2.welcome-text span").shouldHave(text(defaultName));
+        new UserDashboard().openViaHomeButton().getWelcomeTextUsername().shouldHave(text(UpdateProfileRequest.DEFAULT_NAME));
 
         //Дополнительная проверка: Имя пользователя обновилось в хедере (над username) - здесь баг, раскомментить после фикса
-        //$("div.user-info span.user-name").shouldHave(text(defaultName));
+        //new UserDashboard().getUserInfoUsername().shouldHave(text(defaultName));
     }
 }
