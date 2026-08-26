@@ -22,7 +22,7 @@ public class UpdateProfileTest extends BaseUITest {
         registerUser(user);
 
         setupUserWithDefaultName(user);
-        authAsUser(user);
+//        authAsUser(user);
 
         new UserDashboard().open().openEditProfilePage().getEditProfileText().shouldBe(visible);
 
@@ -51,7 +51,7 @@ public class UpdateProfileTest extends BaseUITest {
         registerUser(user);
 
         setupUserWithDefaultName(user);
-        authAsUser(user);
+//        authAsUser(user);
 
         new UserDashboard().open().openEditProfilePage().getEditProfileText().shouldBe(visible);
 

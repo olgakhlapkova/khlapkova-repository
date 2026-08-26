@@ -72,7 +72,7 @@ public class TransferTest extends BaseUITest {
                 .isEqualTo(expectedBalance2, within(0.01));
 
         softly.assertAll();
-        authAsUser(user);
+//        authAsUser(user);
 
         isSetupDone = true;
     }

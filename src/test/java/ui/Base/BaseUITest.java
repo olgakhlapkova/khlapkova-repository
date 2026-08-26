@@ -4,23 +4,27 @@ import api.Base.BaseTest;
 import api.configs.Config;
 import api.models.CreateUserRequest;
 import api.models.UpdateProfileRequest;
-import api.specs.RequestSpecs;
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selenide;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
+import com.codeborne.selenide.Configuration;
+import common.extensions.AdminSessionExtension;
+import common.extensions.BrowserMatchExtension;
+import common.extensions.UserSessionExtension;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static com.codeborne.selenide.Selenide.refresh;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ExtendWith(AdminSessionExtension.class)
+@ExtendWith(UserSessionExtension.class)
+@ExtendWith(BrowserMatchExtension.class)
 public class BaseUITest extends BaseTest {
     protected static final List<Integer> createdAccountIds = new ArrayList<>();
     protected static final List<Integer> createdUserIds = new ArrayList<>();
@@ -101,16 +105,6 @@ public class BaseUITest extends BaseTest {
             }
         }
         createdUserIds.clear();
-    }
-
-    public static void authAsUser(String username, String password) {
-        Selenide.open("/");
-        String userAuthHeader = RequestSpecs.getUserAuthHeader(username, password);
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
-    }
-
-    public static void authAsUser(CreateUserRequest createUserRequest) {
-        authAsUser(createUserRequest.getUsername(), createUserRequest.getPassword());
     }
 
     public void setupUserWithDefaultName(CreateUserRequest user) {

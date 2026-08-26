@@ -18,7 +18,7 @@ public class UserDepositTest extends BaseUITest {
         CreateUserRequest user = AdminSteps.createUser();
         registerUser(user);
 
-        authAsUser(user);
+//        authAsUser(user);
 
         int accountId = UserSteps.createAccount(user);
         registerAccount(accountId);
@@ -51,7 +51,7 @@ public class UserDepositTest extends BaseUITest {
         CreateUserRequest user = AdminSteps.createUser();
         registerUser(user);
 
-        authAsUser(user);
+//        authAsUser(user);
 
         int accountId = UserSteps.createAccount(user);
         registerAccount(accountId);
